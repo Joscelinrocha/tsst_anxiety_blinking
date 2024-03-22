@@ -1,0 +1,32 @@
+{
+    "android_device_id": "7bd6c1218666daf1",
+    "android_device_model": "OnePlus8T_EEA",
+    "android_device_name": "Berries",
+    "app_version": "1.4.20-prod",
+    "calib_version": 1,
+    "data_format_version": "1.4",
+    "duration": 844117000000,
+    "gaze_offset": [
+        0.0,
+        0.0
+    ],
+    "glasses_serial_number": "6j2ru",
+    "os_version": "11",
+    "pipeline_version": "1.8.0",
+    "recording_id": "df417014-32d0-4ecd-885f-92a15b16c946",
+    "scene_camera_serial_number": "3myxs",
+    "start_time": 1659293582754000000,
+    "template_data": {
+        "data": {
+            "7d8bc17d-ab6b-4370-a5fa-b6b903ceba01": [
+                ""
+            ]
+        },
+        "id": "5ae3bcef-535e-47ce-a929-f59a76e86df2",
+        "recording_name": "2022-07-31_14:53:02",
+        "version": "2021-10-25T19:37:52.047672Z"
+    },
+    "wearer_id": "9eb9d475-a042-4dae-b9e8-a8b37185d5b1",
+    "wearer_name": "1237-C",
+    "workspace_id": "6f66a25a-2ed2-4024-a250-4e89b3d668e8"
+}
