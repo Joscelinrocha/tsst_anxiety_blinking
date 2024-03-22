@@ -1,0 +1,7 @@
+recording id,timestamp [ns],name,type
+dffa54dd-9d12-4079-957d-ce35f3cd5276,1666026253013000000,recording.begin,recording
+dffa54dd-9d12-4079-957d-ce35f3cd5276,1666026716296000000,pprep.start,cloud
+dffa54dd-9d12-4079-957d-ce35f3cd5276,1666026836265000000,pprep.end,cloud
+dffa54dd-9d12-4079-957d-ce35f3cd5276,1666026838280000000,pspeech.start,cloud
+dffa54dd-9d12-4079-957d-ce35f3cd5276,1666026966876000000,pspeech.end,cloud
+dffa54dd-9d12-4079-957d-ce35f3cd5276,1666027347242000000,recording.end,recording
