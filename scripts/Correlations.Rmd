@@ -1,0 +1,69 @@
+---
+title: "Correlations"
+author: "Dr. Joscelin Rocha-Hidalgo"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Set Libraries
+```{r}
+#install.packages("corrplot")
+library(corrplot)
+library(tidyverse)
+
+# Using the previous correlation matrix example
+corrplot(correlation_table, method = "color", type = "upper", order = "hclust", tl.col = "black", tl.srt = 45)
+
+
+```
+
+## Import dataset
+```{r}
+data <- read.csv("../data/raw/hbq_scores_overall.csv")
+
+
+data_top_5 <- data %>%
+  select(hbq_adhd.impulsivity:hbq_externalizing_symptoms.overt_hostility) %>%
+   filter(complete.cases(.)) %>%
+  rename(impulsivity = hbq_adhd.impulsivity,
+         inattention = hbq_adhd.inattention,
+         conduct_problems = hbq_externalizing_symptoms.conduct_problems,
+         oppositional_defiant = hbq_externalizing_symptoms.oppositional_defiant,
+         overt_hostility = hbq_externalizing_symptoms.overt_hostility
+)
+```
+
+```{r}
+correlation_table <- cor(data_top_5)
+print(correlation_table)
+```
+
+##
+```{r}
+
+
+corrplot(correlation_table, method = "color", type = "upper", order = "hclust", tl.col = "black", tl.srt = 45)
+
+testRes = cor.mtest(data_top_5, conf.level = 0.95)
+
+
+## add significant level stars
+corrplot(correlation_table, p.mat = testRes$p, method = 'color', diag = FALSE, type = 'upper',
+         sig.level = c(0.001, 0.01, 0.05), pch.cex = 0.9,
+         insig = 'label_sig', pch.col = 'grey20', order = 'AOE')
+
+
+```
+
+```{r}
+library(PerformanceAnalytics)
+```
+
+```{r}
+chart.Correlation(data_top_5, histogram = TRUE, pch = 19)
+```
+
