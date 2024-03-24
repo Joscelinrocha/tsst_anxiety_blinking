@@ -1,0 +1,57 @@
+---
+title: "Merging pupil files into one dataframe"
+author: "Dr. Joscelin Rocha-Hidalgo"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Set Libraries
+```{r}
+library(tidyverse)
+library(tibble)
+```
+
+## Define the base folder path
+```{r}
+base_folder <- "../data/raw/timestamp_dummy_folder"
+```
+
+## List all subfolders within the base folder
+```{r}
+subfolders <- list.dirs(path = base_folder, full.names = TRUE, recursive = FALSE)
+```
+## For loop to merge files
+```{r}
+# Initialize an empty dataframe to hold the merged data
+merged_data <- tibble()
+
+# Loop through each subfolder to process the files
+for (subfolder in subfolders) {
+  # Extract the parts i care from their name such as id and p or c
+  folder_name_parts <- unlist(strsplit(basename(subfolder), split = "-"))
+  id <- folder_name_parts[1]
+  participant <- folder_name_parts[2]
+  
+  # Construct the file path for blinks.csv within the current subfolder
+  file_path <- file.path(subfolder, "blinks.csv")
+  
+  # Check if the file exists before attempting to read
+  if (file.exists(file_path)) {
+    # Read the blinks.csv file
+    data <- read_csv(file_path)
+    
+    # Add the extracted folder name parts as new columns
+    data$id <- id
+    data$participant <- sub("\\_.*", "", participant) # Remove everything after the underscore
+    
+    # Merge this file's data into the main dataframe
+    merged_data <- bind_rows(merged_data, data)
+  }
+}
+
+```
+
