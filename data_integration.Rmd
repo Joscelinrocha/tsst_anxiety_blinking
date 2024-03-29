@@ -1,0 +1,163 @@
+---
+title: "Data Integration"
+author: "Megan Schumer"
+date: '`r Sys.Date()`'
+output: pdf_document
+toc: TRUE
+---
+
+## not sure what this is actually but Joscelin uses it in all her code
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## setup
+
+```{r packages, include=FALSE}
+
+# load libraries
+library(tidyverse)
+library(readxl)
+
+# APA formatting
+theme_apa <- papaja::theme_apa
+
+# variable for current date
+datetoday <- Sys.Date()
+
+# variable for data folder
+existing_folder <- "data"
+
+# create folder inside data folder named with current date
+new_folder <- file.path(existing_folder, datetoday)
+dir.create(new_folder)
+```
+
+## import datasets and aux files
+
+```{r datasets}
+
+# upload dataset files and clean up headers
+demo_data <- read_csv("data/raw/demo.csv") %>%
+  janitor::clean_names()
+
+ep_data <- read_csv("data/raw/ep_questionnaires.csv") %>%
+  janitor::clean_names()
+
+hbq_data <- read_csv("data/raw/hbq_scores_overall.csv") %>%
+  janitor::clean_names()
+
+# add timestamp and blink files here when ready
+```
+
+```{r auxiliaries}
+
+# add if needed
+```
+
+## narrow down variables
+
+```{r demo_child}
+
+# select and rename variables for child demo data
+
+demo_child_data <- demo_data %>%
+  select(record_id, c_age_m, c_age_y, c_sex, c_race, c_latinx, p_edu, income_house, ladder_country, ladder_community) %>%
+  rename(age_m = c_age_m, age_y = c_age_y, sex = c_sex, race = c_race, latinx = c_latinx, parent_edu = p_edu, ses_country = ladder_country, ses_community = ladder_community) %>%
+  mutate(parent_child = 1, .before = age_m) %>%
+  mutate(record_id_chr = paste0(as.character(record_id), "_c"), .before = parent_child)
+```
+
+```{r demo_parent}
+
+# select and rename variables for parent demo data
+
+demo_parent_data <- demo_data %>%
+  select(record_id, p_age_m, p_age_y, p_sex, p_race, p_latinx, p_edu, income_house, ladder_country, ladder_community) %>%
+  rename(age_m = p_age_m, age_y = p_age_y, sex = p_sex, race = p_race, latinx = p_latinx, parent_edu = p_edu, ses_country = ladder_country, ses_community = ladder_community) %>%
+  mutate(parent_child = 0, .before = age_m) %>%
+  mutate(record_id_chr = paste0(as.character(record_id),"_p"), .before = parent_child)
+```
+
+```{r ep_child}
+
+# select and rename variables for child ep questionnaire data
+
+ep_child_data <- ep_data %>%
+  select(record_id, preeptrier_1, preeptrier_2, preeptrier_3, preeptrier_4, posttrierc1, posttrierc2, posttrierc3, posttrier4) %>%
+  rename(pre_anxiety = preeptrier_1, pre_joy = preeptrier_2, pre_success = preeptrier_3, pre_meta = preeptrier_4, post_anxiety = posttrierc1, post_joy = posttrierc2, post_success = posttrierc3, post_meta = posttrier4) %>%
+  mutate(record_id_chr = paste0(as.character(record_id), "_c"), .before = pre_anxiety)
+```
+
+```{r ep_parent}
+
+# select and rename variables for parent ep questionnaire data
+
+ep_parent_data <- ep_data %>%
+  select(record_id, preeptrier_1, preeptrier_2, preeptrier_3, preeptrier_4, posttrier1, posttrier2, posttrier3, posttrier4) %>%
+  rename(pre_anxiety = preeptrier_1, pre_joy = preeptrier_2, pre_success = preeptrier_3, pre_meta = preeptrier_4, post_anxiety = posttrier1, post_joy = posttrier2, post_success = posttrier3, post_meta = posttrier4) %>%
+  mutate(record_id_chr = paste0(as.character(record_id), "_p"), .before = pre_anxiety)
+```
+
+```{r hbq_child}
+
+# select and rename variables for child hbq data
+# calculate overall anxiety score
+
+hbq_child_data <- hbq_data %>%
+  select(record_id, hbq_internalizing_symptoms_overanxious, hbq_internalizing_symptoms_separation_anxiety, hbq_social_withdrawal_social_inhibition) %>%
+  rename(overanxious = hbq_internalizing_symptoms_overanxious, separation_anxiety = hbq_internalizing_symptoms_separation_anxiety, social_inhibition = hbq_social_withdrawal_social_inhibition) %>%
+  mutate(hbq_anxiety = overanxious + separation_anxiety + social_inhibition) %>%
+  mutate(record_id_chr = paste0(as.character(record_id), "_c"), .before = overanxious) %>%
+  filter(!is.na(overanxious) | !is.na(separation_anxiety) | !is.na(social_inhibition))
+```
+
+```{r hbq_parent}
+
+# select and rename variables for parent hbq data
+# calculate overall anxiety score
+
+hbq_parent_data <- hbq_data %>%
+  select(record_id, hbq_internalizing_symptoms_overanxious, hbq_internalizing_symptoms_separation_anxiety, hbq_social_withdrawal_social_inhibition) %>%
+  rename(overanxious = hbq_internalizing_symptoms_overanxious, separation_anxiety = hbq_internalizing_symptoms_separation_anxiety, social_inhibition = hbq_social_withdrawal_social_inhibition) %>%
+  mutate(hbq_anxiety = overanxious + separation_anxiety + social_inhibition) %>%
+  mutate(record_id_chr = paste0(as.character(record_id), "_p"), .before = overanxious) %>%
+  filter(!is.na(overanxious) | !is.na(separation_anxiety) | !is.na(social_inhibition))
+```
+
+```{r blinks}
+# calculate/add to script once raw data is available
+```
+
+## combine tables
+
+```{r parent_child}
+
+# stack demo_child_data and demo_parent_data
+
+demo_clean <- bind_rows(demo_child_data, demo_parent_data)
+
+# stack ep_child_data and ep_parent_data
+
+ep_clean <- bind_rows(ep_child_data, ep_parent_data)
+
+# stack hbq_child_data and hbq_parent_data
+
+hbq_clean <- bind_rows(hbq_child_data, hbq_parent_data)
+```
+
+```{r demo_ep_hbq}
+
+# full join demo_clean and ep_clean to make demo_ep as a stepping stone
+
+demo_ep <- full_join(demo_clean, ep_clean, join_by(record_id, record_id_chr))
+
+# full join demo_ep and hbq_clean to make complete data table
+
+data_complete <- full_join(demo_ep, hbq_clean, join_by(record_id, record_id_chr))
+
+# write data_complete to .csv
+
+write.csv(data_complete, file = paste0(new_folder, "/data_complete.csv"), row.names = FALSE)
+```
