@@ -17,15 +17,15 @@ library(tibble)
 
 ## Define the base folder path
 ```{r}
-base_folder <- "../data/raw/timestamp_dummy_folder"
+base_folder <- "../data/raw/timestamps"
 ```
 
 ## List all subfolders within the base folder
 ```{r}
 subfolders <- list.dirs(path = base_folder, full.names = TRUE, recursive = FALSE)
 ```
-## For loop to merge files
-```{r}
+## For loop to merge files for blinking data
+```{r warning=FALSE}
 # Initialize an empty dataframe to hold the merged data
 merged_data <- tibble()
 
@@ -52,6 +52,69 @@ for (subfolder in subfolders) {
     merged_data <- bind_rows(merged_data, data)
   }
 }
+write_csv(merged_data,"../data/raw/merged_blinks_data.csv")
+
+```
+
+## For loop to merge files for timestamping data
+
+```{r}
+# Initialize an empty dataframe to hold the merged data
+merged_events_data <- tibble()
+
+# Loop through each subfolder to process the files
+for (subfolder in subfolders) {
+  # Extract the parts i care from their name such as id and p or c
+  folder_name_parts <- unlist(strsplit(basename(subfolder), split = "-"))
+  id <- folder_name_parts[1]
+  participant <- folder_name_parts[2]
+  
+  # Construct the file path for blinks.csv within the current subfolder
+  file_path <- file.path(subfolder, "events.csv")
+  
+  # Check if the file exists before attempting to read
+  if (file.exists(file_path)) {
+    # Read the blinks.csv file
+    data <- read_csv(file_path)
+    
+    # Add the extracted folder name parts as new columns
+    data$id <- id
+    data$participant <- sub("\\_.*", "", participant) # Remove everything after the underscore
+    
+    # Merge this file's data into the main dataframe
+    merged_events_data <- bind_rows(merged_events_data, data)
+  }
+}
+
+write_csv(merged_events_data,"../data/raw/merged_events_data.csv")
+```
+
+## Fix merged events data
+```{r}
+pivoted_merged_events_data <- merged_events_data %>%
+  select(-c(type)) %>%
+  pivot_wider(names_from = name, values_from = `timestamp [ns]`)
+
+write_csv(pivoted_merged_events_data,"../data/raw/pivoted_merged_events_data.csv")
+
+```
+
+```{r}
+blink_data_tsst <- merged_data %>%
+  left_join(pivoted_merged_events_data, join_by(`recording id`, id, participant)) %>%
+  mutate(blink_identity = case_when(
+    `start timestamp [ns]` >= pprep.start & `start timestamp [ns]` <= pprep.end ~ "p_prep",
+    `start timestamp [ns]` >= cprep.start & `start timestamp [ns]` <= cprep.end ~ "c_prep",
+    `start timestamp [ns]` >= pspeech.start & `start timestamp [ns]` <= pspeech.end ~ "p_speech",
+    `start timestamp [ns]` >= cspeech.start & `start timestamp [ns]` <= cspeech.end ~ "c_speech",
+    TRUE ~ NA_character_
+  )) %>%
+  filter(!is.na(blink_identity)) %>%
+  group_by(id,participant,blink_identity) %>%
+  count() %>%
+  pivot_wider(names_from =  blink_identity, values_from = n)
+
+write_csv(blink_data_tsst,"../data/raw/blink_data_tsst.csv")
 
 ```
 
