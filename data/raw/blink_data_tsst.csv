@@ -1,4 +1,4 @@
-id,participant,c_prep,c_speech,p_prep,p_speech
+id,participant,cprep_blinks,cspeech_blinks,pprep_blinks,pspeech_blinks
 1103,c,32,14,80,24
 1103,p,91,56,52,105
 1104,c,54,92,74,60

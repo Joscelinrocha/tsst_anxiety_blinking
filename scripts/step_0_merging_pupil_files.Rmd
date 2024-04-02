@@ -103,10 +103,10 @@ write_csv(pivoted_merged_events_data,"../data/raw/pivoted_merged_events_data.csv
 blink_data_tsst <- merged_data %>%
   left_join(pivoted_merged_events_data, join_by(`recording id`, id, participant)) %>%
   mutate(blink_identity = case_when(
-    `start timestamp [ns]` >= pprep.start & `start timestamp [ns]` <= pprep.end ~ "p_prep",
-    `start timestamp [ns]` >= cprep.start & `start timestamp [ns]` <= cprep.end ~ "c_prep",
-    `start timestamp [ns]` >= pspeech.start & `start timestamp [ns]` <= pspeech.end ~ "p_speech",
-    `start timestamp [ns]` >= cspeech.start & `start timestamp [ns]` <= cspeech.end ~ "c_speech",
+    `start timestamp [ns]` >= pprep.start & `start timestamp [ns]` <= pprep.end ~ "pprep_blinks",
+    `start timestamp [ns]` >= cprep.start & `start timestamp [ns]` <= cprep.end ~ "cprep_blinks",
+    `start timestamp [ns]` >= pspeech.start & `start timestamp [ns]` <= pspeech.end ~ "pspeech_blinks",
+    `start timestamp [ns]` >= cspeech.start & `start timestamp [ns]` <= cspeech.end ~ "cspeech_blinks",
     TRUE ~ NA_character_
   )) %>%
   filter(!is.na(blink_identity)) %>%
