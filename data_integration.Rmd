@@ -48,7 +48,11 @@ ep_data <- read_csv("data/raw/ep_questionnaires.csv") %>%
 hbq_data <- read_csv("data/raw/hbq_scores_overall.csv") %>%
   janitor::clean_names()
 
-# add timestamp and blink files here when ready
+timestamps <- read_csv("data/raw/merged_events_data.csv") %>%
+  janitor::clean_names()
+
+blink_data <- read_csv("data/raw/blink_data_tsst.csv") %>%
+  janitor::clean_names()
 ```
 
 ```{r auxiliaries}
@@ -127,7 +131,60 @@ hbq_parent_data <- hbq_data %>%
 ```
 
 ```{r blinks}
-# calculate/add to script once raw data is available
+
+# select and rename variables for blink data
+
+blink_data <- mutate(blink_data, record_id_chr = paste0(as.character(id), "_", as.character(participant)), .before = cprep_blinks)
+```
+
+```{r timestamps}
+
+# create tables for cloud and recording timestamps
+# pivot to create columns for each type of timestamp
+
+timestamps_cloud <- pivot_wider(timestamps, names_from = name, values_from = timestamp_ns) %>%
+  filter(type == "cloud")
+
+timestamps_rec <- pivot_wider(timestamps, names_from = name, values_from = timestamp_ns) %>%
+  filter(type == "recording")
+
+# combine cloud and recording timestamps, clean up variable names
+
+timestamp_data <- full_join(timestamps_cloud, timestamps_rec, join_by(recording_id)) %>%
+  select(id.x, participant.x, recording.begin.y, pprep.start.x, pprep.end.x, pspeech.start.x, pspeech.end.x, cprep.start.x, cprep.end.x, cspeech.start.x, cspeech.end.x, recording.end.y) %>%
+  rename(record_id = id.x, parent_child = participant.x, recording_begin = recording.begin.y, pprep_start = pprep.start.x, pprep_end = pprep.end.x, pspeech_start = pspeech.start.x, pspeech_end = pspeech.end.x, cprep_start = cprep.start.x, cprep_end = cprep.end.x, cspeech_start = cspeech.start.x, cspeech_end = cspeech.end.x, recording_end = recording.end.y) %>%
+  mutate(record_id_chr = paste0(as.character(record_id), "_", as.character(parent_child)), .before = recording_begin)
+```
+
+## calculate durations and blink rates
+
+```{r durations}
+
+# calculate prep and speech durations in nanoseconds, convert to minutes
+
+tsst_durations <- mutate(timestamp_data, pprep_duration_ns = pprep_end - pprep_start,
+                         pprep_duration = (pprep_duration_ns * 10^-9)/60,
+                         pspeech_duration_ns = pspeech_end - pspeech_start,
+                         pspeech_duration = (pspeech_duration_ns * 10^-9)/60,
+                         cprep_duration_ns = cprep_end - cprep_start,
+                         cprep_duration = (cprep_duration_ns * 10^-9)/60,
+                         cspeech_duration_ns = cspeech_end - cspeech_start,
+                         cspeech_duration = (cspeech_duration_ns * 10^-9)/60,) %>%
+  select(record_id_chr, pprep_duration, pspeech_duration, cprep_duration, cspeech_duration)
+```
+
+```{r blinks}
+
+# combine blink_data and timestamp_data
+
+blink_rates <- full_join(blink_data, tsst_durations, join_by(record_id_chr)) %>%
+  
+  # calculate blink rates
+  
+  mutate(pprep_blinkrate = pprep_blinks/pprep_duration,
+         pspeech_blinkrate = pspeech_blinks/pspeech_duration,
+         cprep_blinkrate = cprep_blinks/cprep_duration,
+         cspeech_blinkrate = cspeech_blinks/cspeech_duration)
 ```
 
 ## combine tables
@@ -153,9 +210,13 @@ hbq_clean <- bind_rows(hbq_child_data, hbq_parent_data)
 
 demo_ep <- full_join(demo_clean, ep_clean, join_by(record_id, record_id_chr))
 
-# full join demo_ep and hbq_clean to make complete data table
+# full join demo_ep and hbq_clean to make demo_up_hbq as a stepping stone
 
-data_complete <- full_join(demo_ep, hbq_clean, join_by(record_id, record_id_chr))
+demo_ep_hbq <- full_join(demo_ep, hbq_clean, join_by(record_id, record_id_chr))
+
+# full join demo_ep_hbq and blink_rates to make complete data table
+
+data_complete <- full_join(demo_ep_hbq, blink_rates, join_by(record_id == id, record_id_chr))
 
 # write data_complete to .csv
 
