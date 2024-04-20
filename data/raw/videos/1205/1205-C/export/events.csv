@@ -1,0 +1,3 @@
+timestamp [ns],name,type
+1650826000585000000,recording.begin,recording
+1650827140483000000,recording.end,recording

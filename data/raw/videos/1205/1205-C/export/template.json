@@ -1,0 +1,21 @@
+{
+    "name": "Recording with Notes",
+    "description": null,
+    "template_id": "5ae3bcef-535e-47ce-a929-f59a76e86df2",
+    "Q&A": [
+        {
+            "question": {
+                "choices": null,
+                "help_text": null,
+                "id": "7d8bc17d-ab6b-4370-a5fa-b6b903ceba01",
+                "required": false,
+                "title": "Notes",
+                "widget_type": "PARAGRAPH",
+                "input_type": "any"
+            },
+            "responses": [
+                ""
+            ]
+        }
+    ]
+}
