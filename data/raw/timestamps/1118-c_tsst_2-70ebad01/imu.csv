@@ -1,1 +1,0 @@
-section id,recording id,timestamp [ns],gyro x [deg/s],gyro y [deg/s],gyro z [deg/s],acceleration x [G],acceleration y [G],acceleration z [G],roll [deg],pitch [deg],yaw [deg],quaternion w,quaternion x,quaternion y,quaternion z
