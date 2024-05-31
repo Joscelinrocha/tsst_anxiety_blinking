@@ -1,0 +1,182 @@
+---
+title: "Blink Comparison"
+author: "Megan Schumer"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+```
+
+```{r datasets}
+
+# pull manual and pupil blink files, clean up names and organize columns
+
+blinks_pupil <- read_csv("raw/blinks from pupil cloud/1182-c_tsst-15431bcf/d.csv") %>%
+  janitor::clean_names() %>%
+  select(blink_id, start_timestamp_ns, end_timestamp_ns, duration_ms)
+
+blinks_manual <- read_csv("1182_C_TQH.csv") %>%
+  janitor::clean_names() %>%
+  filter(is.na(not_visible)) %>%
+  select(begin_time_ss_msec, end_time_ss_msec, duration_ss_msec, eye_blinks, timestamps)
+
+blinks_timestamps <- read_csv("raw/blinks from pupil cloud/1182-c_tsst-15431bcf/events.csv") %>%
+  janitor::clean_names() %>%
+  select(timestamp_ns, name)
+```
+
+```{r reformat pupil blinks}
+
+# add timestamps to blinks_pupil
+
+blinks_pupil_ts <- cross_join(blinks_pupil, blinks_timestamps) %>%
+  
+  # pivot wider, one row per blink
+  
+  pivot_wider(names_from = name, values_from = timestamp_ns) %>%
+  
+  # categorize blinks into different task sections
+  
+  mutate(blink_type = case_when(
+    start_timestamp_ns >= pprep.start & end_timestamp_ns <= pprep.end ~ "pprep",
+    start_timestamp_ns >= pspeech.start & end_timestamp_ns <= pspeech.end ~ "pspeech",
+    start_timestamp_ns >= cprep.start & end_timestamp_ns <= cprep.end ~ "cprep",
+    start_timestamp_ns >= cspeech.start & end_timestamp_ns <= cspeech.end ~ "cspeech",
+    .default = NA
+  )) %>%
+  
+  # remove blinks outside of task sections
+  
+  filter(!is.na(blink_type)) %>%
+  
+  # convert UTC to relative timestamp in s
+  
+  mutate(start_timestamp_s = (start_timestamp_ns - recording.begin)/(10^9), end_timestamp_s = (end_timestamp_ns - recording.begin)/(10^9)) %>%
+  
+  # select relevant columns
+  
+  select(blink_id, start_timestamp_s, end_timestamp_s, duration_ms, blink_type)
+
+```
+
+```{r reformat manual blinks}
+
+# convert pupil timestamps to s
+
+blinks_timestamps_s <- mutate(blinks_timestamps, timestamp_s = timestamp_ns/(10^9)) %>%
+  select(timestamp_s, name)
+
+# separate blinks and timestamps
+
+blinks_manual_ts <- filter(blinks_manual, is.na(timestamps)) %>%
+  
+  # add pupil timestamps
+  
+  cross_join(blinks_timestamps_s) %>%
+  
+  # pivot wider, one row per blink
+  
+  pivot_wider(names_from = name, values_from = timestamp_s) %>%
+  
+  # convert UTC to relative timestamp
+  
+  mutate(pprep.start = pprep.start - recording.begin, pprep.end = pprep.end - recording.begin, pspeech.start = pspeech.start - recording.begin, pspeech.end = pspeech.end - recording.begin, cprep.start = cprep.start - recording.begin, cprep.end = cprep.end - recording.begin, cspeech.start = cspeech.start - recording.begin, cspeech.end = cspeech.end - recording.begin) %>%
+  
+  # categorize blinks into different task sections
+  
+  mutate(blink_type = case_when(
+    begin_time_ss_msec >= pprep.start & end_time_ss_msec <= pprep.end ~ "pprep",
+    begin_time_ss_msec >= pspeech.start & end_time_ss_msec <= pspeech.end ~ "pspeech",
+    begin_time_ss_msec >= cprep.start & end_time_ss_msec <= cprep.end ~ "cprep",
+    begin_time_ss_msec >= cspeech.start & end_time_ss_msec <= cspeech.end ~ "cspeech",
+    .default = NA
+  )) %>%
+  
+  # calculate duration in ms
+  
+  mutate(duration_ms = duration_ss_msec*1000) %>%
+  
+  # select relevant columns
+  
+  select(eye_blinks, begin_time_ss_msec, end_time_ss_msec, duration_ms, blink_type)
+
+```
+
+
+```{r match blinks}
+
+# combine manual and pupil blinks as crossjoin (yikes)
+
+blinks_all <- cross_join(blinks_pupil_ts, blinks_manual_ts) %>%
+  
+  # calculate interval between each combination of timestamps (yikes again)
+  
+  mutate(ts_interval = abs(start_timestamp_s - begin_time_ss_msec)) %>%
+  
+  # group by manual blink start timestamp for filtering
+  
+  group_by(start_timestamp_s) %>%
+  
+  # filter to include minimum interval for each manual blink 
+  
+  filter(ts_interval == min(ts_interval, na.rm = TRUE)) %>%
+  
+  # filter top 36 blink intervals (unmatched pupil blinks)
+  
+  ungroup() %>%
+  arrange(desc(ts_interval)) %>%
+  slice(1:36) %>%
+  
+  # select relevant columns
+  
+  select(blink_id, start_timestamp_s, end_timestamp_s, duration_ms.x, blink_type.x)
+
+
+write_csv(blinks_all, "blink_culprits.csv")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

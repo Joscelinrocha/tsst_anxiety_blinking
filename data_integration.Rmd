@@ -249,16 +249,20 @@ data_complete <- inner_join(demo_clean, ep_clean, join_by(record_id_chr, record_
   
   # add blink rates
   
-  inner_join(blink_rates, join_by(record_id_chr)) %>%
-  
-  # filter out incomplete dyads
-  
-  group_by(record_id) %>%
-  mutate(record_id_n = n()) %>%
-  filter(record_id_n == 2) %>%
-  ungroup()
+  inner_join(blink_rates, join_by(record_id_chr))
 
 # write data_complete to .csv
 
 write.csv(data_complete, file = paste0(new_folder, "/data_complete.csv"), row.names = FALSE)
+```
+
+```{r abstract demographics}
+
+# group into parents and children
+
+data_complete_demo <- group_by(data_complete, parent_child) %>%
+  
+  # calculate summary stats for age in years
+  
+  summarise(mean = mean(age_y), min = min(age_y), max = max(age_y), sd = sd(age_y))
 ```
