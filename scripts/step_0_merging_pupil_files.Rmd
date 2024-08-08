@@ -17,43 +17,78 @@ library(tibble)
 
 ## Define the base folder path
 ```{r}
-base_folder <- "../data/raw/timestamps"
+base_folder <- "../data/raw/blinks from manual export"
 ```
 
-## List all subfolders within the base folder
-```{r}
-subfolders <- list.dirs(path = base_folder, full.names = TRUE, recursive = FALSE)
-```
-## For loop to merge files for blinking data
+
+## For loop to merge files for blinking data within subfolders
 ```{r warning=FALSE}
+# # Initialize an empty dataframe to hold the merged data
+# merged_data <- tibble()
+# 
+# # Loop through each subfolder to process the files
+# for (subfolder in subfolders) {
+#   # Extract the parts i care from their name such as id and p or c
+#   folder_name_parts <- unlist(strsplit(basename(subfolder), split = "-"))
+#   id <- folder_name_parts[1]
+#   participant <- folder_name_parts[2]
+#   
+#   # Construct the file path for blinks.csv within the current subfolder
+#   file_path <- file.path(subfolder, "blinks.csv")
+#   
+#   # Check if the file exists before attempting to read
+#   if (file.exists(file_path)) {
+#     # Read the blinks.csv file
+#     data <- read_csv(file_path)
+#     
+#     # Add the extracted folder name parts as new columns
+#     data$id <- id
+#     data$participant <- sub("\\_.*", "", participant) # Remove everything after the underscore
+#     
+#     # Merge this file's data into the main dataframe
+#     merged_data <- bind_rows(merged_data, data)
+#   }
+# }
+# write_csv(merged_data,"../data/raw/merged_blinks_data.csv")
+```
+
+## For loop to merge files for blinking data in a path
+```{r}
+# List all 'blinks.csv' files in the specified base_folder
+file_paths <- list.files(base_folder, pattern = "blinks.csv", full.names = TRUE)
+
 # Initialize an empty dataframe to hold the merged data
 merged_data <- tibble()
 
-# Loop through each subfolder to process the files
-for (subfolder in subfolders) {
-  # Extract the parts i care from their name such as id and p or c
-  folder_name_parts <- unlist(strsplit(basename(subfolder), split = "-"))
-  id <- folder_name_parts[1]
-  participant <- folder_name_parts[2]
-  
-  # Construct the file path for blinks.csv within the current subfolder
-  file_path <- file.path(subfolder, "blinks.csv")
-  
+# Loop through each file to process
+for (file_path in file_paths) {
+  # Extract the parts of the filename before 'blinks.csv' (assuming it's named with id and participant info)
+  file_name_parts <- unlist(strsplit(basename(file_path), split = "-"))
+  id <- file_name_parts[1]
+  participant <- file_name_parts[2]
+
   # Check if the file exists before attempting to read
   if (file.exists(file_path)) {
     # Read the blinks.csv file
-    data <- read_csv(file_path)
-    
-    # Add the extracted folder name parts as new columns
+    data <- read_csv(file_path, col_types = cols())
+
+    # Add the extracted file name parts as new columns
     data$id <- id
-    data$participant <- sub("\\_.*", "", participant) # Remove everything after the underscore
-    
+    data$participant <- sub("_.*", "", participant)  # Remove everything after the underscore
+
     # Merge this file's data into the main dataframe
     merged_data <- bind_rows(merged_data, data)
   }
 }
-write_csv(merged_data,"../data/raw/merged_blinks_data.csv")
 
+# Get the current date
+current_date <- Sys.Date()
+
+# Create a filename with the current date
+output_file_name <- paste0("../data/raw/merged_blinks_data_", current_date, ".csv")
+
+# Output the merged data to a CSV file with the current date in the filename
+write_csv(merged_data, output_file_name)
 ```
 
 ## For loop to merge files for timestamping data
@@ -103,10 +138,10 @@ write_csv(pivoted_merged_events_data,"../data/raw/pivoted_merged_events_data.csv
 blink_data_tsst <- merged_data %>%
   left_join(pivoted_merged_events_data, join_by(`recording id`, id, participant)) %>%
   mutate(blink_identity = case_when(
-    `start timestamp [ns]` >= pprep.start & `start timestamp [ns]` <= pprep.end ~ "p_prep",
-    `start timestamp [ns]` >= cprep.start & `start timestamp [ns]` <= cprep.end ~ "c_prep",
-    `start timestamp [ns]` >= pspeech.start & `start timestamp [ns]` <= pspeech.end ~ "p_speech",
-    `start timestamp [ns]` >= cspeech.start & `start timestamp [ns]` <= cspeech.end ~ "c_speech",
+    `start timestamp [ns]` >= pprep.start & `start timestamp [ns]` <= pprep.end ~ "pprep_blinks",
+    `start timestamp [ns]` >= cprep.start & `start timestamp [ns]` <= cprep.end ~ "cprep_blinks",
+    `start timestamp [ns]` >= pspeech.start & `start timestamp [ns]` <= pspeech.end ~ "pspeech_blinks",
+    `start timestamp [ns]` >= cspeech.start & `start timestamp [ns]` <= cspeech.end ~ "cspeech_blinks",
     TRUE ~ NA_character_
   )) %>%
   filter(!is.na(blink_identity)) %>%

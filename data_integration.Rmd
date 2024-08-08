@@ -48,7 +48,11 @@ ep_data <- read_csv("data/raw/ep_questionnaires.csv") %>%
 hbq_data <- read_csv("data/raw/hbq_scores_overall.csv") %>%
   janitor::clean_names()
 
-# add timestamp and blink files here when ready
+timestamps <- read_csv("data/raw/merged_events_data.csv") %>%
+  janitor::clean_names()
+
+blink_data <- read_csv("data/raw/merged_blinks_data_2024-05-02.csv") %>%
+  janitor::clean_names()
 ```
 
 ```{r auxiliaries}
@@ -66,7 +70,7 @@ demo_child_data <- demo_data %>%
   select(record_id, c_age_m, c_age_y, c_sex, c_race, c_latinx, p_edu, income_house, ladder_country, ladder_community) %>%
   rename(age_m = c_age_m, age_y = c_age_y, sex = c_sex, race = c_race, latinx = c_latinx, parent_edu = p_edu, ses_country = ladder_country, ses_community = ladder_community) %>%
   mutate(parent_child = 1, .before = age_m) %>%
-  mutate(record_id_chr = paste0(as.character(record_id), "_c"), .before = parent_child)
+  mutate(record_id_chr = paste0(as.character(record_id), "_C"), .before = parent_child)
 ```
 
 ```{r demo_parent}
@@ -77,7 +81,7 @@ demo_parent_data <- demo_data %>%
   select(record_id, p_age_m, p_age_y, p_sex, p_race, p_latinx, p_edu, income_house, ladder_country, ladder_community) %>%
   rename(age_m = p_age_m, age_y = p_age_y, sex = p_sex, race = p_race, latinx = p_latinx, parent_edu = p_edu, ses_country = ladder_country, ses_community = ladder_community) %>%
   mutate(parent_child = 0, .before = age_m) %>%
-  mutate(record_id_chr = paste0(as.character(record_id),"_p"), .before = parent_child)
+  mutate(record_id_chr = paste0(as.character(record_id),"_P"), .before = parent_child)
 ```
 
 ```{r ep_child}
@@ -87,7 +91,7 @@ demo_parent_data <- demo_data %>%
 ep_child_data <- ep_data %>%
   select(record_id, preeptrier_1, preeptrier_2, preeptrier_3, preeptrier_4, posttrierc1, posttrierc2, posttrierc3, posttrier4) %>%
   rename(pre_anxiety = preeptrier_1, pre_joy = preeptrier_2, pre_success = preeptrier_3, pre_meta = preeptrier_4, post_anxiety = posttrierc1, post_joy = posttrierc2, post_success = posttrierc3, post_meta = posttrier4) %>%
-  mutate(record_id_chr = paste0(as.character(record_id), "_c"), .before = pre_anxiety)
+  mutate(record_id_chr = paste0(as.character(record_id), "_C"), .before = pre_anxiety)
 ```
 
 ```{r ep_parent}
@@ -97,7 +101,7 @@ ep_child_data <- ep_data %>%
 ep_parent_data <- ep_data %>%
   select(record_id, preeptrier_1, preeptrier_2, preeptrier_3, preeptrier_4, posttrier1, posttrier2, posttrier3, posttrier4) %>%
   rename(pre_anxiety = preeptrier_1, pre_joy = preeptrier_2, pre_success = preeptrier_3, pre_meta = preeptrier_4, post_anxiety = posttrier1, post_joy = posttrier2, post_success = posttrier3, post_meta = posttrier4) %>%
-  mutate(record_id_chr = paste0(as.character(record_id), "_p"), .before = pre_anxiety)
+  mutate(record_id_chr = paste0(as.character(record_id), "_P"), .before = pre_anxiety)
 ```
 
 ```{r hbq_child}
@@ -109,7 +113,7 @@ hbq_child_data <- hbq_data %>%
   select(record_id, hbq_internalizing_symptoms_overanxious, hbq_internalizing_symptoms_separation_anxiety, hbq_social_withdrawal_social_inhibition) %>%
   rename(overanxious = hbq_internalizing_symptoms_overanxious, separation_anxiety = hbq_internalizing_symptoms_separation_anxiety, social_inhibition = hbq_social_withdrawal_social_inhibition) %>%
   mutate(hbq_anxiety = overanxious + separation_anxiety + social_inhibition) %>%
-  mutate(record_id_chr = paste0(as.character(record_id), "_c"), .before = overanxious) %>%
+  mutate(record_id_chr = paste0(as.character(record_id), "_C"), .before = overanxious) %>%
   filter(!is.na(overanxious) | !is.na(separation_anxiety) | !is.na(social_inhibition))
 ```
 
@@ -122,12 +126,98 @@ hbq_parent_data <- hbq_data %>%
   select(record_id, hbq_internalizing_symptoms_overanxious, hbq_internalizing_symptoms_separation_anxiety, hbq_social_withdrawal_social_inhibition) %>%
   rename(overanxious = hbq_internalizing_symptoms_overanxious, separation_anxiety = hbq_internalizing_symptoms_separation_anxiety, social_inhibition = hbq_social_withdrawal_social_inhibition) %>%
   mutate(hbq_anxiety = overanxious + separation_anxiety + social_inhibition) %>%
-  mutate(record_id_chr = paste0(as.character(record_id), "_p"), .before = overanxious) %>%
+  mutate(record_id_chr = paste0(as.character(record_id), "_P"), .before = overanxious) %>%
   filter(!is.na(overanxious) | !is.na(separation_anxiety) | !is.na(social_inhibition))
 ```
 
 ```{r blinks}
-# calculate/add to script once raw data is available
+
+# select and rename variables for blink data
+
+blink_data <- mutate(blink_data, record_id_chr = paste0(as.character(id), "_", toupper(as.character(participant))))
+```
+
+```{r timestamps}
+
+# create tables for cloud and recording timestamps
+# pivot to create columns for each type of timestamp
+
+timestamps_cloud <- pivot_wider(timestamps, names_from = name, values_from = timestamp_ns) %>%
+  filter(type == "cloud")
+
+timestamps_rec <- pivot_wider(timestamps, names_from = name, values_from = timestamp_ns) %>%
+  filter(type == "recording")
+
+# combine cloud and recording timestamps, clean up variable names
+
+timestamp_data <- full_join(timestamps_cloud, timestamps_rec, join_by(recording_id)) %>%
+  select(id.x, participant.x, recording.begin.y, pprep.start.x, pprep.end.x, pspeech.start.x, pspeech.end.x, cprep.start.x, cprep.end.x, cspeech.start.x, cspeech.end.x, recording.end.y) %>%
+  rename(record_id = id.x, parent_child = participant.x, recording_begin = recording.begin.y, pprep_start = pprep.start.x, pprep_end = pprep.end.x, pspeech_start = pspeech.start.x, pspeech_end = pspeech.end.x, cprep_start = cprep.start.x, cprep_end = cprep.end.x, cspeech_start = cspeech.start.x, cspeech_end = cspeech.end.x, recording_end = recording.end.y) %>%
+  mutate(record_id_chr = paste0(as.character(record_id), "_", toupper(as.character(parent_child))), .before = recording_begin)
+```
+
+## calculate durations and blink rates
+
+```{r durations}
+
+# calculate prep and speech durations in nanoseconds, convert to minutes
+
+tsst_durations <- mutate(timestamp_data, pprep_duration_ns = pprep_end - pprep_start,
+                         pprep_duration = (pprep_duration_ns * 10^-9)/60,
+                         pspeech_duration_ns = pspeech_end - pspeech_start,
+                         pspeech_duration = (pspeech_duration_ns * 10^-9)/60,
+                         cprep_duration_ns = cprep_end - cprep_start,
+                         cprep_duration = (cprep_duration_ns * 10^-9)/60,
+                         cspeech_duration_ns = cspeech_end - cspeech_start,
+                         cspeech_duration = (cspeech_duration_ns * 10^-9)/60,) %>%
+  select(record_id_chr, pprep_duration, pspeech_duration, cprep_duration, cspeech_duration)
+```
+
+```{r blink counts}
+
+# combine blink_data and timestamp_data so blinks can be categorized into different task sections
+
+blink_counts <- inner_join(blink_data, timestamp_data, join_by(record_id_chr)) %>%
+  
+  # create column for blink categorization
+  
+  mutate(blink_type = case_when(
+    start_timestamp_ns >= pprep_start & end_timestamp_ns <= pprep_end ~ "pprep_blinks",
+    start_timestamp_ns >= pspeech_start & end_timestamp_ns <= pspeech_end ~ "pspeech_blinks",
+    start_timestamp_ns >= cprep_start & end_timestamp_ns <= cprep_end ~ "cprep_blinks",
+    start_timestamp_ns >= cspeech_start & end_timestamp_ns <= cspeech_end ~ "cspeech_blinks",
+    .default = NA
+  )) %>%
+  
+  # filter out blinks outside of task sections
+  
+  filter(!is.na(blink_type)) %>%
+  
+  # group by pt and blink type
+  
+  group_by(record_id_chr, blink_type) %>%
+  
+  # count number of blinks per task section per pt
+  
+  summarise(n = n()) %>%
+  
+  # pivot wider, one row per pt
+  
+  pivot_wider(names_from = blink_type, values_from = n)
+```
+
+```{r blink rates}
+
+# combine blink_counts and tsst_durations so blink rate can be calculated
+
+blink_rates <- full_join(blink_counts, tsst_durations) %>%
+  
+  # calculate blink rates
+  
+  mutate(pprep_blinkrate = pprep_blinks/pprep_duration,
+         pspeech_blinkrate = pspeech_blinks/pspeech_duration,
+         cprep_blinkrate = cprep_blinks/cprep_duration,
+         cspeech_blinkrate = cspeech_blinks/cspeech_duration)
 ```
 
 ## combine tables
@@ -149,15 +239,30 @@ hbq_clean <- bind_rows(hbq_child_data, hbq_parent_data)
 
 ```{r demo_ep_hbq}
 
-# full join demo_clean and ep_clean to make demo_ep as a stepping stone
+# inner join demo_clean and ep_clean
 
-demo_ep <- full_join(demo_clean, ep_clean, join_by(record_id, record_id_chr))
-
-# full join demo_ep and hbq_clean to make complete data table
-
-data_complete <- full_join(demo_ep, hbq_clean, join_by(record_id, record_id_chr))
+data_complete <- inner_join(demo_clean, ep_clean, join_by(record_id_chr, record_id)) %>%
+  
+  # add hbq data
+  
+  inner_join(hbq_clean, join_by(record_id_chr, record_id)) %>%
+  
+  # add blink rates
+  
+  inner_join(blink_rates, join_by(record_id_chr))
 
 # write data_complete to .csv
 
 write.csv(data_complete, file = paste0(new_folder, "/data_complete.csv"), row.names = FALSE)
+```
+
+```{r abstract demographics}
+
+# group into parents and children
+
+data_complete_demo <- group_by(data_complete, parent_child) %>%
+  
+  # calculate summary stats for age in years
+  
+  summarise(mean = mean(age_y), min = min(age_y), max = max(age_y), sd = sd(age_y))
 ```
