@@ -6,7 +6,7 @@ output: pdf_document
 toc: TRUE
 ---
 
-## not sure what this is actually but Joscelin uses it in all her code
+## start-up
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -39,13 +39,7 @@ dir.create(new_folder)
 ```{r datasets}
 
 # upload dataset files and clean up headers
-demo_data <- read_csv("data/raw/demo.csv") %>%
-  janitor::clean_names()
-
-ep_data <- read_csv("data/raw/ep_questionnaires.csv") %>%
-  janitor::clean_names()
-
-hbq_data <- read_csv("data/raw/hbq_scores_overall.csv") %>%
+redcap_data <- read_csv("data/raw/redcap_data.csv") %>%
   janitor::clean_names()
 
 timestamps <- read_csv("data/raw/merged_events_data.csv") %>%
@@ -57,14 +51,80 @@ blink_data <- read_csv("data/raw/merged_blinks_data_2024-05-02.csv") %>%
 
 ```{r auxiliaries}
 
-# add if needed
+# load HBQ aux file for categorizing questions for subscales
+
+hbq_items <- read_csv("auxiliaries/hbq_items.csv")
+```
+
+## clean up data
+
+```{r demo}
+
+# replace NA values in race columns with 0
+
+redcap_data$demo_child_race_6 <- replace_na(redcap_data$demo_child_race_6, 0)
+redcap_data$demo_race_6 <- replace_na(redcap_data$demo_race_6, 0)
+
+# filter out enrollment/recruitment arms
+
+redcap_data <- filter(redcap_data, redcap_event_name == "t1_arm_1" | redcap_event_name == "t1_arm_2" | redcap_event_name == "pcat_arm_1" | redcap_event_name == "pcat_arm_4") %>%
+  
+  # calculate parent and child ages in months and years
+  
+  mutate(c_age_y = time_length(interval(demo_child_dob,tsst_date),"year"),
+         c_age_m = time_length(interval(demo_child_dob,tsst_date),"month"),
+         p_age_y = time_length(interval(demo_dob,tsst_date),"year"),
+         p_age_m = time_length(interval(demo_dob,tsst_date),"month")) %>%
+  
+  # combine race columns into one and convert to factor
+  
+  mutate(c_race = factor(case_when(
+    demo_child_race_6 == 1 | demo_child_race_1 + demo_child_race_2 + demo_child_race_3 + demo_child_race_4 + demo_child_race_5 + demo_child_race_7 > 1 ~ 6,
+    demo_child_race_1 == 1 ~ 1,
+    demo_child_race_2 == 1 ~ 2,
+    demo_child_race_3 == 1 ~ 3,
+    demo_child_race_4 == 1 ~ 4,
+    demo_child_race_5 == 1 ~ 5,
+    demo_child_race_7 == 1 ~ 7,
+    .default = NA
+  ),
+  levels = c(1:7, NA),
+  labels = c("White", "Black/African American", "Asian", "Native Hawaiian/Pacific Islander", "American Indian/Alaskan Native", "Multiracial", "Other")),
+  p_race = factor(case_when(
+    demo_race_6 == 1 | demo_race_1 + demo_race_2 + demo_race_3 + demo_race_4 + demo_race_5 + demo_race_7 > 1 ~ 6,
+    demo_race_1 == 1 ~ 1,
+    demo_race_2 == 1 ~ 2,
+    demo_race_3 == 1 ~ 3,
+    demo_race_4 == 1 ~ 4,
+    demo_race_5 == 1 ~ 5,
+    demo_race_7 == 1 ~ 7,
+    .default = NA
+  ),
+  levels = c(1:7, NA),
+  labels = c("White", "Black/African American", "Asian", "Native Hawaiian/Pacific Islander", "American Indian/Alaskan Native", "Multiracial", "Other"))) %>%
+  
+  # convert sex and ethnicity to factors and education and income to orders
+  
+  mutate(demo_child_sex = factor(demo_child_sex, levels = c(1:3, -999, NA), labels = c("Male", "Female", "Intersex", "Refused")),
+         demo_sex = factor(demo_sex, levels = c(1:3,-999,NA), labels = c("Male", "Female", "Intersex", "Refused")),
+         demo_child_ethnicity = factor(demo_child_ethnicity, levels = c(0:1, -999, NA), labels = c("Non-Hispanic/Latino", "Hispanic/Latino", "Refused")),
+         demo_ethnicity = factor(demo_ethnicity, levels = c(0:1, -999, NA), labels = c("Non-Hispanic/Latino", "Hispanic/Latino", "Refused")),
+         demo_degree = ordered(demo_degree, levels = c(1:9, -999, NA), labels = c("No Diploma or Degree", "GED", "High School Diploma", "Associate's Degree", "Bachelor's Degree", "Master's Degree", "Doctorate (PhD, MD, JD, etc.)", "Some College", "Other", "Refused")),
+         demo_combinedincome = ordered(demo_combinedincome, levels = c(1:8, -999, NA), labels = c("Less than $20,000", "$20,000 to $39,999", "$40,000 to $59,999", "$60,000 to $79,999", "$80,000 to $99,999", "$100,000 to $119,999", "$120,000 to $250,000", "More than $250,000", "Refused")))
+```
+
+```{r hbq}
+
+# select hbq data from main df
+
+hbq_scores <- select(redcap_data, demo_recordid, hbq_68:hbq_136)
 ```
 
 ## narrow down variables
 
-```{r demo_child}
+```{r child data}
 
-# select and rename variables for child demo data
+# select and rename variables for child data
 
 demo_child_data <- demo_data %>%
   select(record_id, c_age_m, c_age_y, c_sex, c_race, c_latinx, p_edu, income_house, ladder_country, ladder_community) %>%
