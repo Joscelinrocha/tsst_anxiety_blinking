@@ -6,7 +6,7 @@ output: pdf_document
 toc: TRUE
 ---
 
-## not sure what this is actually but Joscelin uses it in all her code
+## start-up
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -39,13 +39,7 @@ dir.create(new_folder)
 ```{r datasets}
 
 # upload dataset files and clean up headers
-demo_data <- read_csv("data/raw/demo.csv") %>%
-  janitor::clean_names()
-
-ep_data <- read_csv("data/raw/ep_questionnaires.csv") %>%
-  janitor::clean_names()
-
-hbq_data <- read_csv("data/raw/hbq_scores_overall.csv") %>%
+redcap_data <- read_csv("data/raw/redcap_data.csv") %>%
   janitor::clean_names()
 
 timestamps <- read_csv("data/raw/merged_events_data.csv") %>%
@@ -57,77 +51,193 @@ blink_data <- read_csv("data/raw/merged_blinks_data_2024-05-02.csv") %>%
 
 ```{r auxiliaries}
 
-# add if needed
+# load HBQ aux file for categorizing questions for subscales
+
+hbq_items <- read_csv("auxiliaries/hbq_items.csv", col_select = c("r01_item", "subscale"))
+```
+
+## clean up data
+
+```{r demo}
+
+# replace NA values in race columns with 0
+
+redcap_data$demo_child_race_6 <- replace_na(redcap_data$demo_child_race_6, 0)
+redcap_data$demo_race_6 <- replace_na(redcap_data$demo_race_6, 0)
+
+# filter out enrollment/recruitment arms
+
+redcap_data <- filter(redcap_data, redcap_event_name == "t1_arm_1" | redcap_event_name == "t1_arm_2" | redcap_event_name == "pcat_arm_1" | redcap_event_name == "pcat_arm_4") %>%
+  
+  # calculate parent and child ages in months and years
+  
+  mutate(c_age_y = time_length(interval(demo_child_dob,tsst_date),"year"),
+         c_age_m = time_length(interval(demo_child_dob,tsst_date),"month"),
+         p_age_y = time_length(interval(demo_dob,tsst_date),"year"),
+         p_age_m = time_length(interval(demo_dob,tsst_date),"month")) %>%
+  
+  # combine race columns into one and convert to factor
+  
+  mutate(c_race = factor(case_when(
+    demo_child_race_6 == 1 | demo_child_race_1 + demo_child_race_2 + demo_child_race_3 + demo_child_race_4 + demo_child_race_5 + demo_child_race_7 > 1 ~ 6,
+    demo_child_race_1 == 1 ~ 1,
+    demo_child_race_2 == 1 ~ 2,
+    demo_child_race_3 == 1 ~ 3,
+    demo_child_race_4 == 1 ~ 4,
+    demo_child_race_5 == 1 ~ 5,
+    demo_child_race_7 == 1 ~ 7,
+    .default = NA
+  ),
+  levels = c(1:7, NA),
+  labels = c("White", "Black/African American", "Asian", "Native Hawaiian/Pacific Islander", "American Indian/Alaskan Native", "Multiracial", "Other")),
+  p_race = factor(case_when(
+    demo_race_6 == 1 | demo_race_1 + demo_race_2 + demo_race_3 + demo_race_4 + demo_race_5 + demo_race_7 > 1 ~ 6,
+    demo_race_1 == 1 ~ 1,
+    demo_race_2 == 1 ~ 2,
+    demo_race_3 == 1 ~ 3,
+    demo_race_4 == 1 ~ 4,
+    demo_race_5 == 1 ~ 5,
+    demo_race_7 == 1 ~ 7,
+    .default = NA
+  ),
+  levels = c(1:7, NA),
+  labels = c("White", "Black/African American", "Asian", "Native Hawaiian/Pacific Islander", "American Indian/Alaskan Native", "Multiracial", "Other"))) %>%
+  
+  # convert sex and ethnicity to factors and education and income to orders
+  
+  mutate(demo_child_sex = factor(demo_child_sex, levels = c(1:3, -999, NA), labels = c("Male", "Female", "Intersex", "Refused")),
+         demo_sex = factor(demo_sex, levels = c(1:3,-999,NA), labels = c("Male", "Female", "Intersex", "Refused")),
+         demo_child_ethnicity = factor(demo_child_ethnicity, levels = c(0:1, -999, NA), labels = c("Non-Hispanic/Latino", "Hispanic/Latino", "Refused")),
+         demo_ethnicity = factor(demo_ethnicity, levels = c(0:1, -999, NA), labels = c("Non-Hispanic/Latino", "Hispanic/Latino", "Refused")),
+         demo_degree = ordered(demo_degree, levels = c(1:9, -999, NA), labels = c("No Diploma or Degree", "GED", "High School Diploma", "Associate's Degree", "Bachelor's Degree", "Master's Degree", "Doctorate (PhD, MD, JD, etc.)", "Some College", "Other", "Refused")),
+         demo_combinedincome = ordered(demo_combinedincome, levels = c(1:8, -999, NA), labels = c("Less than $20,000", "$20,000 to $39,999", "$40,000 to $59,999", "$60,000 to $79,999", "$80,000 to $99,999", "$100,000 to $119,999", "$120,000 to $250,000", "More than $250,000", "Refused")))
+```
+
+## score HBQ
+
+```{r hbq}
+
+# select hbq data from main df
+
+hbq_scores <- select(redcap_data, demo_recordid, hbq_68:hbq_136) %>%
+  
+  # pivot longer, one row per hbq item
+  
+  pivot_longer(cols = hbq_68:hbq_136, names_to = "hbq_varname", values_to = "hbq_resp") %>%
+  
+  # add subscales from hbq_items
+  
+  left_join(hbq_items, join_by(hbq_varname == r01_item)) %>%
+  
+  # replace -99 with NA, add column for omitting from subscale scoring
+  
+  mutate(hbq_resp = na_if(hbq_resp, -99)) %>%
+  mutate(omit = case_when(
+    is.na(hbq_resp) ~ 1,
+    .default = 0
+  )) %>%
+  
+  # group by record id and subscale for scoring
+  
+  group_by(demo_recordid, subscale) %>%
+  
+  # calculate subscales and omitted questions
+  
+  summarise(hbq_score = round(mean(hbq_resp, na.rm = TRUE), 2),
+            hbq_omit = sum(omit, na.rm = TRUE)) %>%
+  ungroup() %>%
+  
+  # remove subscale scores with too many NA values (1 NA allowed for overanxious and separation_anxiety, 0 allowed for social_inhibition)
+  
+  mutate(hbq_score = case_when(
+    (subscale == "overanxious" | subscale == "separation_anxiety") & hbq_omit > 1 ~ NA,
+    subscale == "social_inhibition" & hbq_omit > 0 ~ NA,
+    .default = hbq_score
+  )) %>%
+  
+  # pivot wider, one row per pt
+  
+  pivot_wider(id_cols = "demo_recordid", names_from = "subscale", values_from = "hbq_score")
 ```
 
 ## narrow down variables
 
-```{r demo_child}
+```{r child data}
 
-# select and rename variables for child demo data
+# select and rename variables for child data
 
-demo_child_data <- demo_data %>%
-  select(record_id, c_age_m, c_age_y, c_sex, c_race, c_latinx, p_edu, income_house, ladder_country, ladder_community) %>%
-  rename(age_m = c_age_m, age_y = c_age_y, sex = c_sex, race = c_race, latinx = c_latinx, parent_edu = p_edu, ses_country = ladder_country, ses_community = ladder_community) %>%
-  mutate(parent_child = 1, .before = age_m) %>%
-  mutate(record_id_chr = paste0(as.character(record_id), "_C"), .before = parent_child)
+child_data <- select(redcap_data, 1, 66:67, 5, 70, 14, 26:33, 38:40, 37) %>%
+  rename(record_id = demo_recordid,
+         age_y = c_age_y,
+         age_m = c_age_m,
+         sex = demo_child_sex,
+         race = c_race,
+         ethnicity = demo_child_ethnicity,
+         parent_edu = demo_degree,
+         parent_income = demo_combinedincome,
+         ses_country = demo_ladder_usa_self,
+         ses_community = demo_ladder_community_self,
+         pre_anxiety = pre_tsst_1,
+         pre_joy = pre_tsst_2,
+         pre_success = pre_tsst_3,
+         pre_meta = pre_tsst_4,
+         post_anxiety = post_tsst_c_1,
+         post_joy = post_tsst_c_2,
+         post_success = post_tsst_c_3,
+         post_meta = post_tsst_4) %>%
+  
+  # add column to identify pts as children and column for child id
+  
+  mutate(record_id_chr = paste0(as.character(record_id), "_C"),
+         parent_child = 1,
+         .before = age_y) %>%
+  
+  # add hbq subscales
+  
+  left_join(hbq_scores, join_by(record_id == demo_recordid)) %>%
+  
+  # calculate overall anxiety score
+  
+  mutate(hbq_anxiety = overanxious + separation_anxiety + social_inhibition)
 ```
 
-```{r demo_parent}
+```{r parent data}
 
-# select and rename variables for parent demo data
+# select and rename variables for parent data
 
-demo_parent_data <- demo_data %>%
-  select(record_id, p_age_m, p_age_y, p_sex, p_race, p_latinx, p_edu, income_house, ladder_country, ladder_community) %>%
-  rename(age_m = p_age_m, age_y = p_age_y, sex = p_sex, race = p_race, latinx = p_latinx, parent_edu = p_edu, ses_country = ladder_country, ses_community = ladder_community) %>%
-  mutate(parent_child = 0, .before = age_m) %>%
-  mutate(record_id_chr = paste0(as.character(record_id),"_P"), .before = parent_child)
-```
-
-```{r ep_child}
-
-# select and rename variables for child ep questionnaire data
-
-ep_child_data <- ep_data %>%
-  select(record_id, preeptrier_1, preeptrier_2, preeptrier_3, preeptrier_4, posttrierc1, posttrierc2, posttrierc3, posttrier4) %>%
-  rename(pre_anxiety = preeptrier_1, pre_joy = preeptrier_2, pre_success = preeptrier_3, pre_meta = preeptrier_4, post_anxiety = posttrierc1, post_joy = posttrierc2, post_success = posttrierc3, post_meta = posttrier4) %>%
-  mutate(record_id_chr = paste0(as.character(record_id), "_C"), .before = pre_anxiety)
-```
-
-```{r ep_parent}
-
-# select and rename variables for parent ep questionnaire data
-
-ep_parent_data <- ep_data %>%
-  select(record_id, preeptrier_1, preeptrier_2, preeptrier_3, preeptrier_4, posttrier1, posttrier2, posttrier3, posttrier4) %>%
-  rename(pre_anxiety = preeptrier_1, pre_joy = preeptrier_2, pre_success = preeptrier_3, pre_meta = preeptrier_4, post_anxiety = posttrier1, post_joy = posttrier2, post_success = posttrier3, post_meta = posttrier4) %>%
-  mutate(record_id_chr = paste0(as.character(record_id), "_P"), .before = pre_anxiety)
-```
-
-```{r hbq_child}
-
-# select and rename variables for child hbq data
-# calculate overall anxiety score
-
-hbq_child_data <- hbq_data %>%
-  select(record_id, hbq_internalizing_symptoms_overanxious, hbq_internalizing_symptoms_separation_anxiety, hbq_social_withdrawal_social_inhibition) %>%
-  rename(overanxious = hbq_internalizing_symptoms_overanxious, separation_anxiety = hbq_internalizing_symptoms_separation_anxiety, social_inhibition = hbq_social_withdrawal_social_inhibition) %>%
-  mutate(hbq_anxiety = overanxious + separation_anxiety + social_inhibition) %>%
-  mutate(record_id_chr = paste0(as.character(record_id), "_C"), .before = overanxious) %>%
-  filter(!is.na(overanxious) | !is.na(separation_anxiety) | !is.na(social_inhibition))
-```
-
-```{r hbq_parent}
-
-# select and rename variables for parent hbq data
-# calculate overall anxiety score
-
-hbq_parent_data <- hbq_data %>%
-  select(record_id, hbq_internalizing_symptoms_overanxious, hbq_internalizing_symptoms_separation_anxiety, hbq_social_withdrawal_social_inhibition) %>%
-  rename(overanxious = hbq_internalizing_symptoms_overanxious, separation_anxiety = hbq_internalizing_symptoms_separation_anxiety, social_inhibition = hbq_social_withdrawal_social_inhibition) %>%
-  mutate(hbq_anxiety = overanxious + separation_anxiety + social_inhibition) %>%
-  mutate(record_id_chr = paste0(as.character(record_id), "_P"), .before = overanxious) %>%
-  filter(!is.na(overanxious) | !is.na(separation_anxiety) | !is.na(social_inhibition))
+parent_data <- select(redcap_data, 1, 68:69, 16, 71, 25:37) %>%
+  rename(record_id = demo_recordid,
+         age_y = p_age_y,
+         age_m = p_age_m,
+         sex = demo_sex,
+         race = p_race,
+         ethnicity = demo_ethnicity,
+         parent_edu = demo_degree,
+         parent_income = demo_combinedincome,
+         ses_country = demo_ladder_usa_self,
+         ses_community = demo_ladder_community_self,
+         pre_anxiety = pre_tsst_1,
+         pre_joy = pre_tsst_2,
+         pre_success = pre_tsst_3,
+         pre_meta = pre_tsst_4,
+         post_anxiety = post_tsst_1,
+         post_joy = post_tsst_2,
+         post_success = post_tsst_3,
+         post_meta = post_tsst_4) %>%
+  
+  # add column to identify pts as children and column for child id
+  
+  mutate(record_id_chr = paste0(as.character(record_id), "_P"),
+         parent_child = 0,
+         .before = age_y) %>%
+  
+  # add hbq subscales
+  
+  left_join(hbq_scores, join_by(record_id == demo_recordid)) %>%
+  
+  # calculate overall anxiety score
+  
+  mutate(hbq_anxiety = overanxious + separation_anxiety + social_inhibition)
 ```
 
 ```{r blinks}
