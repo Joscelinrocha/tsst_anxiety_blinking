@@ -29,6 +29,11 @@ Megan Schumer, Talia Halleck, Joscelin Rocha-Hidalgo, Shri Jeyaram, Maya Dieterl
 |--| data\
 |--------| readme.md\
 |--------| dataset_goal.xlsx\
+|--------| blink_comparison\
+|-------------------| manual_data\
+|-------------------| pupil_data\
+|-------------------| blink_comparison.Rmd
+|-------------------| blink_comparison.csv
 |--------| raw\
 |-------------------| readme.md\
 |-------------------| merged_blinks_data_2024-05-02.csv\

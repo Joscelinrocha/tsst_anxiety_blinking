@@ -1,0 +1,5 @@
+section id,recording id,recording name,wearer id,wearer name,section start time [ns],section end time [ns],start event name,end event name
+d3d0e5a8-c14e-43ed-97eb-71bc042e4938,b201e6c2-7b2f-4247-9d05-ab5338303acc,11008_P_T1_tsst,43f5e2a3-cc76-48c4-aefb-d36fa00d7bab,11008_P,1682012580815000000,1682013423166000000,recording.begin,recording.end
+68bf1999-fbd3-40d2-adac-29a1f8ad35e4,b413c983-32a7-4c81-b47f-0d6ad725e058,11004_P_T1_tsst,bc75376a-f6d3-4e51-b5c2-c8a4d261fa18,11004_P,1681509161203000000,1681510207355000000,recording.begin,recording.end
+353303cd-fc38-4381-a97a-d35c14a4cc7a,bb326ec9-5c5b-47c0-a9f2-7948c436c853,11010_C_T1_tsst,84a28d38-edce-4f1f-b649-d8f1eac058ab,11010_C,1681852107923000000,1681853136597000000,recording.begin,recording.end
+55c544f7-479e-4e79-b191-ca95eddd31e5,e783abbe-e58a-4a0f-b4c0-7ba1aa2fa1ed,11002_C_T1_tsst,4ee130af-4662-48ba-99ba-2dd6e9f5f9ac,11002_C,1679070118787000000,1679071558866000000,recording.begin,recording.end
