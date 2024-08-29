@@ -1,0 +1,17 @@
+id,blink_type,blink_count_pupil,blink_count_manual
+11002,cprep,24,9
+11002,cspeech,21,4
+11002,pprep,22,20
+11002,pspeech,18,11
+11004,cprep,39,29
+11004,cspeech,24,13
+11004,pprep,41,33
+11004,pspeech,20,14
+11008,cprep,30,21
+11008,cspeech,22,19
+11008,pprep,50,34
+11008,pspeech,38,37
+11010,cprep,31,33
+11010,cspeech,1,12
+11010,pprep,7,15
+11010,pspeech,5,11
