@@ -53,7 +53,7 @@ pupil_comparison <- janitor::clean_names(pupil_comparison)
 # list event files
 file_paths_events <- list.files("pupil_data", pattern = "events.csv", full.names = TRUE, recursive = TRUE)
 
-# create empty df to hold blinks
+# create empty df to hold timestamps
 pupil_timestamps <- tibble()
 
 # loop through files and process
@@ -80,7 +80,7 @@ for (file_path in file_paths_events) {
 }
 
 # remove event type columns
-blinks_timestamps <- select(pupil_timestamps, 1:3, 5:6) %>%
+pupil_timestamps <- select(pupil_timestamps, 1:3, 5:6) %>%
   
   # pivot the timestamps wider, one row per pt
   pivot_wider(names_from = name, values_from = "timestamp [ns]") %>%
@@ -92,11 +92,9 @@ blinks_timestamps <- select(pupil_timestamps, 1:3, 5:6) %>%
 ```{r reformat pupil blinks}
 
 # add timestamps to pupil_comparison
-
-blinks_pupil_ts <- left_join(pupil_comparison, blinks_timestamps, join_by(id == id, participant == participant, recording_id == recording_id)) %>%
+pupil_comparison_ts <- left_join(pupil_comparison, pupil_timestamps, join_by(id == id, participant == participant, recording_id == recording_id)) %>%
   
   # categorize blinks into different task sections
-  
   mutate(blink_type = case_when(
     start_timestamp_ns >= pprep_start & end_timestamp_ns <= pprep_end ~ "pprep",
     start_timestamp_ns >= pspeech_start & end_timestamp_ns <= pspeech_end ~ "pspeech",
@@ -106,16 +104,16 @@ blinks_pupil_ts <- left_join(pupil_comparison, blinks_timestamps, join_by(id == 
   )) %>%
   
   # remove blinks outside of task sections
-  
   filter(!is.na(blink_type)) %>%
   
   # convert UTC to relative timestamp in s
-  
   mutate(start_timestamp_s = (start_timestamp_ns - recording_begin)/(10^9), end_timestamp_s = (end_timestamp_ns - recording_begin)/(10^9)) %>%
   
   # select relevant columns
+  select(id, participant, start_timestamp_s, end_timestamp_s, duration_ms, blink_type) %>%
   
-  select(id, blink_id, start_timestamp_s, end_timestamp_s, duration_ms, blink_type)
+  # add column to identify pupil blinks
+  mutate(blink_source = "pupil")
 ```
 
 ```{r organize manual blinks}
@@ -151,70 +149,71 @@ for (file_path in file_paths_manual) {
 
 # clean names
 manual_comparison <- janitor::clean_names(manual_comparison)
+
+# generate TSST timestamp df
+
+# filter to show rows with trial timestamps
+manual_timestamps <- filter(manual_comparison, !is.na(timestamps)) %>%
+  
+  # select relevant columns
+  select(13:14, 12, 2) %>%
+  
+  # pivot timestamps wider, one row per pt
+  pivot_wider(names_from = timestamps, values_from = begin_time_ss_msec) %>%
+  
+  # clean names
+  janitor::clean_names()
 ```
 
 ```{r reformat manual blinks}
 
-# filter timestamps out of manual_comparison
-
-blinks_manual_ts <- filter(manual_comparison, is.na(timestamps)) %>%
+# filter timestamps (as rows) out of manual_comparison
+manual_comparison_ts <- filter(manual_comparison, is.na(timestamps)) %>%
   
-  # add blink index column
-  mutate(blink_id = row_number()) %>%
+  # add timestamps (as columns)
+  left_join(manual_timestamps, join_by(id == id, participant == participant)) %>%
+  
+  # categorize blinks into different task sections
+  mutate(blink_type = case_when(
+    begin_time_ss_msec >= pprep_start & end_time_ss_msec <= pprep_end ~ "pprep",
+    begin_time_ss_msec >= pspeech_start & end_time_ss_msec <= pspeech_end ~ "pspeech",
+    begin_time_ss_msec >= cprep_start & end_time_ss_msec <= cprep_end ~ "cprep",
+    begin_time_ss_msec >= cspeech_start & end_time_ss_msec <= cspeech_end ~ "cspeech",
+    .default = NA
+  )) %>%
   
   # select relevant columns
-  select(id, blink_id, begin_time_ss_msec, end_time_ss_msec, duration_msec) %>%
+  select(id, participant, begin_time_ss_msec, end_time_ss_msec, duration_msec, blink_type) %>%
   
   # rename columns for consistency with pupil blinks
   rename(start_timestamp_s = begin_time_ss_msec, end_timestamp_s = end_time_ss_msec, duration_ms = duration_msec) %>%
   
-  # add pupil timestamps
-  left_join(blinks_timestamps, join_by(id == id)) %>%
-  
-  # convert UTC timestamps to relative timestamps in s
-  mutate(
-    pprep_start = (pprep_start - recording_begin)/(10^9),
-    pprep_end = (pprep_end - recording_begin)/(10^9),
-    pspeech_start = (pspeech_start - recording_begin)/(10^9),
-    pspeech_end = (pspeech_end - recording_begin)/(10^9),
-    cprep_start = (cprep_start - recording_begin)/(10^9),
-    cprep_end = (cprep_end - recording_begin)/(10^9),
-    cspeech_start = (cspeech_start - recording_begin)/(10^9),
-    cspeech_end = (cspeech_end - recording_begin)/(10^9)
-  ) %>%
-  
-  # categorize blinks into different task sections
-  mutate(blink_type = case_when(
-    start_timestamp_s >= pprep_start & end_timestamp_s <= pprep_end ~ "pprep",
-    start_timestamp_s >= pspeech_start & end_timestamp_s <= pspeech_end ~ "pspeech",
-    start_timestamp_s >= cprep_start & end_timestamp_s <= cprep_end ~ "cprep",
-    start_timestamp_s >= cspeech_start & end_timestamp_s <= cspeech_end ~ "cspeech",
-    .default = NA
-  )) %>%
-  
   # remove blinks outside of task sections
   filter(!is.na(blink_type)) %>%
   
-  # select relevant columns
-  select(1:5, 19)
+  # add column to identify manual blinks
+  mutate(blink_source = "manual")
 ```
 
 ```{r blink summary}
 
-# group pupil blinks by id and blink type
-blinks_pupil_count <- group_by(blinks_pupil_ts, id, blink_type) %>%
+# combine manual and pupil blinks into one table
+full_comparison <- bind_rows(manual_comparison_ts, pupil_comparison_ts) %>%
   
-  # count blinks for each pt for each block
-  summarize(blink_count_pupil = n())
-
-# group manual blinks by id and blink type
-blinks_manual_count <- group_by(blinks_manual_ts, id, blink_type) %>%
+  # group by blink source, pt id, and blink type
+  group_by(blink_source, id, blink_type) %>%
   
-  # count blinks for each pt for each block
-  summarize(blink_count_manual = n())
-
-# combine summary tables
-blink_comparison <- full_join(blinks_pupil_count, blinks_manual_count, join_by(id, blink_type)) %>%
+  # count blinks for each pt by task section and blink source
+  summarise(blink_count = n()) %>%
+  
+  # pivot wider, one row per pt per task section
+  pivot_wider(names_from = blink_source, values_from = blink_count) %>%
+  
+  # calculate differences
+  mutate(
+    difference_n = manual - pupil,
+    difference_perc = round(100*(manual - pupil)/pupil, 2)
+  ) %>%
   
   # write to csv
   write_csv("blink_comparison.csv")
