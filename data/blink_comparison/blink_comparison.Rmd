@@ -116,6 +116,111 @@ pupil_comparison_ts <- left_join(pupil_comparison, pupil_timestamps, join_by(id 
   mutate(blink_source = "pupil")
 ```
 
+```{r organize pupil blinks from manual export}
+
+# adapted Joscelin's code from step_0_merging_pupil_files
+
+# list blink files
+file_paths_pupil_manual <- list.files("pupil_data_manual_export", pattern = "blinks.csv", full.names = TRUE, recursive = TRUE)
+
+# create empty df to hold blinks
+pupil_manual_comparison <- tibble()
+
+# loop through files and process
+for (file_path in file_paths_pupil_manual) {
+  
+  # add ID and pt columns from folder names
+  file_name_parts <- unlist(strsplit(file_path, split = "_"))
+  id <- file_name_parts[4]
+  participant <- file_name_parts[5]
+
+  # Check if the file exists before attempting to read
+  if (file.exists(file_path)) {
+    
+    # read the blinks.csv file
+    data <- read_csv(file_path, col_types = cols())
+
+    # Add the ID and pt columns
+    data$id <- sub("export/", "", id) # remove everything before the /
+    data$participant <- sub("_.*", "", participant)  # Remove everything after the underscore
+
+    # Merge this file's data into the main dataframe
+    pupil_manual_comparison <- bind_rows(pupil_manual_comparison, data)
+  }
+}
+
+# clean names
+pupil_manual_comparison <- janitor::clean_names(pupil_manual_comparison)
+
+# repeat above steps to generate TSST timestamp df
+# using original pupil files - manual export doesn't have task timestamps
+
+# list event files
+file_paths_events <- list.files("pupil_data", pattern = "events.csv", full.names = TRUE, recursive = TRUE)
+
+# create empty df to hold timestamps
+pupil_manual_timestamps <- tibble()
+
+# loop through files and process
+for (file_path in file_paths_events) {
+  
+  # add ID and pt columns from folder names
+  file_name_parts <- unlist(strsplit(file_path, split = "_"))
+  id <- file_name_parts[2]
+  participant <- file_name_parts[3]
+  
+  # check if file exists before attempting to read
+  if (file.exists(file_path)) {
+    
+    # read the events.csv file
+    data <- read_csv(file_path, col_types = cols())
+    
+    # add the ID and pt columns
+    data$id <- sub("data/", "", id) # remove everything before the /
+    data$participant <- participant
+    
+    # merge into main df
+    pupil_manual_timestamps <- bind_rows(pupil_manual_timestamps, data)
+  }
+}
+
+# remove event type columns
+pupil_manual_timestamps <- select(pupil_manual_timestamps, 1:3, 5:6) %>%
+  
+  # pivot the timestamps wider, one row per pt
+  pivot_wider(names_from = name, values_from = "timestamp [ns]") %>%
+  
+  # clean names
+  janitor::clean_names()
+```
+
+```{r reformat pupil blinks}
+
+# add timestamps to pupil_comparison
+pupil_manual_comparison_ts <- left_join(pupil_manual_comparison, pupil_manual_timestamps, join_by(id == id, participant == participant)) %>%
+  
+  # categorize blinks into different task sections
+  mutate(blink_type = case_when(
+    start_timestamp_ns >= pprep_start & end_timestamp_ns <= pprep_end ~ "pprep",
+    start_timestamp_ns >= pspeech_start & end_timestamp_ns <= pspeech_end ~ "pspeech",
+    start_timestamp_ns >= cprep_start & end_timestamp_ns <= cprep_end ~ "cprep",
+    start_timestamp_ns >= cspeech_start & end_timestamp_ns <= cspeech_end ~ "cspeech",
+    .default = NA
+  )) %>%
+  
+  # remove blinks outside of task sections
+  filter(!is.na(blink_type)) %>%
+  
+  # convert UTC to relative timestamp in s
+  mutate(start_timestamp_s = (start_timestamp_ns - recording_begin)/(10^9), end_timestamp_s = (end_timestamp_ns - recording_begin)/(10^9)) %>%
+  
+  # select relevant columns
+  select(id, participant, start_timestamp_s, end_timestamp_s, duration_ms, blink_type) %>%
+  
+  # add column to identify pupil blinks
+  mutate(blink_source = "pupil_manual")
+```
+
 ```{r organize manual blinks}
 
 # list R01 blink files
@@ -198,7 +303,7 @@ manual_comparison_ts <- filter(manual_comparison, is.na(timestamps)) %>%
 ```{r blink summary}
 
 # combine manual and pupil blinks into one table
-full_comparison <- bind_rows(manual_comparison_ts, pupil_comparison_ts) %>%
+full_comparison <- bind_rows(manual_comparison_ts, pupil_comparison_ts, pupil_manual_comparison_ts) %>%
   
   # group by blink source, pt id, and blink type
   group_by(blink_source, id, blink_type) %>%
@@ -208,12 +313,6 @@ full_comparison <- bind_rows(manual_comparison_ts, pupil_comparison_ts) %>%
   
   # pivot wider, one row per pt per task section
   pivot_wider(names_from = blink_source, values_from = blink_count) %>%
-  
-  # calculate differences
-  mutate(
-    difference_n = manual - pupil,
-    difference_perc = round(100*(manual - pupil)/pupil, 2)
-  ) %>%
   
   # write to csv
   write_csv("blink_comparison.csv")
