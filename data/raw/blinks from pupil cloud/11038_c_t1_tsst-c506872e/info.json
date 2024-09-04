@@ -1,0 +1,35 @@
+{
+    "android_device_id": "548ef26d15707ef7",
+    "android_device_model": "OnePlus8",
+    "android_device_name": "lcbd_eyetracker1",
+    "app_version": "1.4.30-prod",
+    "calib_version": 1,
+    "data_format_version": "1.4",
+    "duration": 1376478936316,
+    "gaze_offset": [
+        0.0,
+        0.0
+    ],
+    "glasses_serial_number": "fqhgx",
+    "os_version": "11",
+    "pipeline_version": "1.10.0",
+    "recording_id": "c506872e-9f5c-4013-a466-ac0e6dc587ff",
+    "recovered_files": [
+        "info.json"
+    ],
+    "scene_camera_serial_number": "k3tdg",
+    "start_time": 1692222081101000000,
+    "template_data": {
+        "data": {
+            "524a1344-412d-49e5-81ae-faf646e6d752": [
+                ""
+            ]
+        },
+        "id": "90981011-3cb1-4186-bc4b-3cedcde49b2d",
+        "recording_name": "2023-08-16_16:41:21",
+        "version": "2021-10-25T18:43:46.455139Z"
+    },
+    "wearer_id": "ab502ab7-5197-4447-af78-8316c9e9dc55",
+    "wearer_name": "11038_C",
+    "workspace_id": "8510c576-06cf-4003-841d-11515a154f10"
+}

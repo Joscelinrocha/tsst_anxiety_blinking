@@ -1,0 +1,32 @@
+{
+    "android_device_id": "b4e82b5840ccd082",
+    "android_device_model": "OnePlus8",
+    "android_device_name": "OnePlus8",
+    "app_version": "1.4.30-prod",
+    "calib_version": 1,
+    "data_format_version": "1.4",
+    "duration": 1174549000000,
+    "gaze_offset": [
+        0.0,
+        0.0
+    ],
+    "glasses_serial_number": "zsfu4",
+    "os_version": "11",
+    "pipeline_version": "1.10.0",
+    "recording_id": "e8f667dd-bd70-49ad-8d48-91cd5896bf61",
+    "scene_camera_serial_number": "dapyt",
+    "start_time": 1687548841824000000,
+    "template_data": {
+        "data": {
+            "524a1344-412d-49e5-81ae-faf646e6d752": [
+                ""
+            ]
+        },
+        "id": "90981011-3cb1-4186-bc4b-3cedcde49b2d",
+        "recording_name": "2023-06-23_14:34:01",
+        "version": "2021-10-25T18:43:46.455139Z"
+    },
+    "wearer_id": "d3f54a8f-5313-4d90-99ce-55ac42fcdf51",
+    "wearer_name": "11031_P",
+    "workspace_id": "8510c576-06cf-4003-841d-11515a154f10"
+}
