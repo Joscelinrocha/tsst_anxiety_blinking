@@ -1,0 +1,32 @@
+{
+    "android_device_id": "7357b36912b9dd52",
+    "android_device_model": "OnePlus8T_EEA",
+    "android_device_name": "Cream",
+    "app_version": "1.4.30-prod",
+    "calib_version": 1,
+    "data_format_version": "1.4",
+    "duration": 1201136000000,
+    "gaze_offset": [
+        0.0,
+        0.0
+    ],
+    "glasses_serial_number": "6j2ru",
+    "os_version": "11",
+    "pipeline_version": "1.10.0",
+    "recording_id": "b7f80610-56ba-4323-9f53-83ae46ab2280",
+    "scene_camera_serial_number": "3myxs",
+    "start_time": 1689534218951000000,
+    "template_data": {
+        "data": {
+            "7d8bc17d-ab6b-4370-a5fa-b6b903ceba01": [
+                ""
+            ]
+        },
+        "id": "5ae3bcef-535e-47ce-a929-f59a76e86df2",
+        "recording_name": "2023-07-16_15:03:38",
+        "version": "2021-10-25T19:37:52.047672Z"
+    },
+    "wearer_id": "a4b34a5b-64e3-46c8-985b-64f3e1b26895",
+    "wearer_name": "12029_C",
+    "workspace_id": "6f66a25a-2ed2-4024-a250-4e89b3d668e8"
+}
