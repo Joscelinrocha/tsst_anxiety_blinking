@@ -1,8 +1,0 @@
-recording id,timestamp [ns],name,type
-f99d0ac9-ea29-4870-9399-bfdfc92f7e71,1680037977688000000,recording.begin,recording
-f99d0ac9-ea29-4870-9399-bfdfc92f7e71,1680038139527146000,gaze.corrected,cloud
-f99d0ac9-ea29-4870-9399-bfdfc92f7e71,1680038297819739000,pprep.start,cloud
-f99d0ac9-ea29-4870-9399-bfdfc92f7e71,1680038413596225000,pprep.end,cloud
-f99d0ac9-ea29-4870-9399-bfdfc92f7e71,1680038420195127000,pspeech.start,cloud
-f99d0ac9-ea29-4870-9399-bfdfc92f7e71,1680038536782953000,pspeech.end,cloud
-f99d0ac9-ea29-4870-9399-bfdfc92f7e71,1680039209349000000,recording.end,recording
