@@ -1,0 +1,8 @@
+recording id,timestamp [ns],name,type
+40d0adf2-6a15-4ea9-9ef9-b6cf9e20195e,1646089282673000000,recording.begin,recording
+40d0adf2-6a15-4ea9-9ef9-b6cf9e20195e,1646089638996000000,pprep.start,cloud
+40d0adf2-6a15-4ea9-9ef9-b6cf9e20195e,1646089763596000000,pprep.end,cloud
+40d0adf2-6a15-4ea9-9ef9-b6cf9e20195e,1646089764806000000,pspeech.start,cloud
+40d0adf2-6a15-4ea9-9ef9-b6cf9e20195e,1646089889456000000,pspeech.end,cloud
+40d0adf2-6a15-4ea9-9ef9-b6cf9e20195e,1646089980296000000,cprep.start,cloud
+40d0adf2-6a15-4ea9-9ef9-b6cf9e20195e,1646090091850000000,recording.end,recording
