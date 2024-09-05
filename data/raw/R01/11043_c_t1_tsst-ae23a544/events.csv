@@ -1,0 +1,12 @@
+recording id,timestamp [ns],name,type
+ae23a544-f428-4462-a3bb-9bb6defa8489,1.69447E+18,recording.begin,recording
+ae23a544-f428-4462-a3bb-9bb6defa8489,1.69447E+18,gaze.corrected,cloud
+ae23a544-f428-4462-a3bb-9bb6defa8489,1.69447E+18,pprep.start,cloud
+ae23a544-f428-4462-a3bb-9bb6defa8489,1.69447E+18,pprep.end,cloud
+ae23a544-f428-4462-a3bb-9bb6defa8489,1.69447E+18,pspeech.start,cloud
+ae23a544-f428-4462-a3bb-9bb6defa8489,1.69447E+18,pspeech.end,cloud
+ae23a544-f428-4462-a3bb-9bb6defa8489,1.69447E+18,cprep.start,cloud
+ae23a544-f428-4462-a3bb-9bb6defa8489,1.69447E+18,cprep.end,cloud
+ae23a544-f428-4462-a3bb-9bb6defa8489,1.69447E+18,cspeech.start,cloud
+ae23a544-f428-4462-a3bb-9bb6defa8489,1.69447E+18,cspeech.end,cloud
+ae23a544-f428-4462-a3bb-9bb6defa8489,1.69447E+18,recording.end,recording
