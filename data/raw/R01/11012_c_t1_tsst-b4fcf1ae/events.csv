@@ -1,0 +1,4 @@
+recording id,timestamp [ns],name,type
+b4fcf1ae-0147-4e9e-86ae-3e18256b153a,1682375883930000000,recording.begin,recording
+b4fcf1ae-0147-4e9e-86ae-3e18256b153a,1682376006181749000,gaze.corrected,cloud
+b4fcf1ae-0147-4e9e-86ae-3e18256b153a,1682376910660000000,recording.end,recording
