@@ -1,0 +1,331 @@
+---
+title: "Data Integration"
+author: "Megan Schumer"
+date: '`r Sys.Date()`'
+output: pdf_document
+toc: TRUE
+---
+
+## start-up
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## setup
+
+```{r packages, include=FALSE}
+
+# load libraries
+library(tidyverse)
+library(readxl)
+
+# APA formatting
+theme_apa <- papaja::theme_apa
+
+# variable for current date
+datetoday <- Sys.Date()
+
+# variable for data folder
+existing_folder <- "../data/tidy"
+
+# create folder inside data folder named with current date
+new_folder <- file.path(existing_folder, datetoday)
+dir.create(new_folder)
+```
+
+## import datasets and aux files
+
+```{r datasets}
+
+# upload dataset files and clean up headers
+redcap_data <- read_csv("../data/raw/redcap_data.csv") %>%
+  janitor::clean_names()
+
+blink_data <- read_csv("../data/raw/complete_blink_data.csv") %>%
+  janitor::clean_names()
+```
+
+```{r auxiliaries}
+
+# load HBQ aux file for categorizing questions for subscales
+
+hbq_items <- read_csv("../auxiliaries/hbq_items.csv", col_select = c("r01_item", "subscale"))
+```
+
+## clean up data
+
+```{r demo}
+
+# replace NA values in race columns with 0
+
+redcap_data$demo_child_race_6 <- replace_na(redcap_data$demo_child_race_6, 0)
+redcap_data$demo_race_6 <- replace_na(redcap_data$demo_race_6, 0)
+
+# filter out enrollment/recruitment arms
+
+redcap_data <- filter(redcap_data, redcap_event_name == "t1_arm_1" | redcap_event_name == "t1_arm_2" | redcap_event_name == "pcat_arm_1" | redcap_event_name == "pcat_arm_4") %>%
+  
+  # calculate parent and child ages in months and years
+  
+  mutate(c_age_y = time_length(interval(demo_child_dob,tsst_date),"year"),
+         c_age_m = time_length(interval(demo_child_dob,tsst_date),"month"),
+         p_age_y = time_length(interval(demo_dob,tsst_date),"year"),
+         p_age_m = time_length(interval(demo_dob,tsst_date),"month")) %>%
+  
+  # combine race columns into one and convert to factor
+  
+  mutate(c_race = factor(case_when(
+    demo_child_race_6 == 1 | demo_child_race_1 + demo_child_race_2 + demo_child_race_3 + demo_child_race_4 + demo_child_race_5 + demo_child_race_7 > 1 ~ 6,
+    demo_child_race_1 == 1 ~ 1,
+    demo_child_race_2 == 1 ~ 2,
+    demo_child_race_3 == 1 ~ 3,
+    demo_child_race_4 == 1 ~ 4,
+    demo_child_race_5 == 1 ~ 5,
+    demo_child_race_7 == 1 ~ 7,
+    .default = NA
+  ),
+  levels = c(1:7, NA),
+  labels = c("White", "Black/African American", "Asian", "Native Hawaiian/Pacific Islander", "American Indian/Alaskan Native", "Multiracial", "Other")),
+  p_race = factor(case_when(
+    demo_race_6 == 1 | demo_race_1 + demo_race_2 + demo_race_3 + demo_race_4 + demo_race_5 + demo_race_7 > 1 ~ 6,
+    demo_race_1 == 1 ~ 1,
+    demo_race_2 == 1 ~ 2,
+    demo_race_3 == 1 ~ 3,
+    demo_race_4 == 1 ~ 4,
+    demo_race_5 == 1 ~ 5,
+    demo_race_7 == 1 ~ 7,
+    .default = NA
+  ),
+  levels = c(1:7, NA),
+  labels = c("White", "Black/African American", "Asian", "Native Hawaiian/Pacific Islander", "American Indian/Alaskan Native", "Multiracial", "Other"))) %>%
+  
+  # convert sex and ethnicity to factors and education and income to orders
+  
+  mutate(demo_child_sex = factor(demo_child_sex, levels = c(1:3, -999, NA), labels = c("Male", "Female", "Intersex", "Refused")),
+         demo_sex = factor(demo_sex, levels = c(1:3,-999,NA), labels = c("Male", "Female", "Intersex", "Refused")),
+         demo_child_ethnicity = factor(demo_child_ethnicity, levels = c(0:1, -999, NA), labels = c("Non-Hispanic/Latino", "Hispanic/Latino", "Refused")),
+         demo_ethnicity = factor(demo_ethnicity, levels = c(0:1, -999, NA), labels = c("Non-Hispanic/Latino", "Hispanic/Latino", "Refused")),
+         demo_degree = ordered(demo_degree, levels = c(1:9, -999, NA), labels = c("No Diploma or Degree", "GED", "High School Diploma", "Associate's Degree", "Bachelor's Degree", "Master's Degree", "Doctorate (PhD, MD, JD, etc.)", "Some College", "Other", "Refused")),
+         demo_combinedincome = ordered(demo_combinedincome, levels = c(1:8, -999, NA), labels = c("Less than $20,000", "$20,000 to $39,999", "$40,000 to $59,999", "$60,000 to $79,999", "$80,000 to $99,999", "$100,000 to $119,999", "$120,000 to $250,000", "More than $250,000", "Refused")))
+```
+
+## score HBQ
+
+```{r hbq}
+
+# select hbq data from main df
+
+hbq_scores <- select(redcap_data, demo_recordid, hbq_68:hbq_136) %>%
+  
+  # pivot longer, one row per hbq item
+  
+  pivot_longer(cols = hbq_68:hbq_136, names_to = "hbq_varname", values_to = "hbq_resp") %>%
+  
+  # add subscales from hbq_items
+  
+  left_join(hbq_items, join_by(hbq_varname == r01_item)) %>%
+  
+  # replace -99 with NA, add column for omitting from subscale scoring
+  
+  mutate(hbq_resp = na_if(hbq_resp, -99)) %>%
+  mutate(omit = case_when(
+    is.na(hbq_resp) ~ 1,
+    .default = 0
+  )) %>%
+  
+  # group by record id and subscale for scoring
+  
+  group_by(demo_recordid, subscale) %>%
+  
+  # calculate subscales and omitted questions
+  
+  summarise(hbq_score = round(mean(hbq_resp, na.rm = TRUE), 2),
+            hbq_omit = sum(omit, na.rm = TRUE)) %>%
+  ungroup() %>%
+  
+  # remove subscale scores with too many NA values (1 NA allowed for overanxious and separation_anxiety, 0 allowed for social_inhibition)
+  
+  mutate(hbq_score = case_when(
+    (subscale == "overanxious" | subscale == "separation_anxiety") & hbq_omit > 1 ~ NA,
+    subscale == "social_inhibition" & hbq_omit > 0 ~ NA,
+    .default = hbq_score
+  )) %>%
+  
+  # pivot wider, one row per pt
+  
+  pivot_wider(id_cols = "demo_recordid", names_from = "subscale", values_from = "hbq_score")
+```
+
+## narrow down variables
+
+```{r child data}
+
+# filter child blink data into new df
+
+blink_data_child <- filter(blink_data, participant == "c") %>%
+  select(1, 3:6)
+
+# select and rename variables for child data
+
+child_data <- select(redcap_data, 1, 66:67, 5, 70, 14, 26:33, 38:40, 37) %>%
+  rename(record_id = demo_recordid,
+         age_y = c_age_y,
+         age_m = c_age_m,
+         sex = demo_child_sex,
+         race = c_race,
+         ethnicity = demo_child_ethnicity,
+         parent_edu = demo_degree,
+         parent_income = demo_combinedincome,
+         ses_country = demo_ladder_usa_self,
+         ses_community = demo_ladder_community_self,
+         pre_anxiety = pre_tsst_1,
+         pre_joy = pre_tsst_2,
+         pre_success = pre_tsst_3,
+         pre_meta = pre_tsst_4,
+         post_anxiety = post_tsst_c_1,
+         post_joy = post_tsst_c_2,
+         post_success = post_tsst_c_3,
+         post_meta = post_tsst_4) %>%
+  
+  # add hbq subscales
+  
+  full_join(hbq_scores, join_by(record_id == demo_recordid)) %>%
+  
+  # calculate overall anxiety score
+  
+  mutate(hbq_anxiety = overanxious + separation_anxiety + social_inhibition) %>%
+  
+  # add blink data
+  
+  full_join(blink_data_child, join_by(record_id == id)) %>%
+  
+  # add column to identify pts as children and column for child id
+  
+  mutate(record_id_chr = paste0(as.character(record_id), "_C"),
+         parent_child = 1,
+         .before = age_y)
+```
+
+```{r parent data}
+
+# filter parent blink data into new df
+
+blink_data_parent <- filter(blink_data, participant == "p") %>%
+  select(1, 3:6)
+
+# select and rename variables for parent data
+
+parent_data <- select(redcap_data, 1, 68:69, 16, 71, 25:37) %>%
+  rename(record_id = demo_recordid,
+         age_y = p_age_y,
+         age_m = p_age_m,
+         sex = demo_sex,
+         race = p_race,
+         ethnicity = demo_ethnicity,
+         parent_edu = demo_degree,
+         parent_income = demo_combinedincome,
+         ses_country = demo_ladder_usa_self,
+         ses_community = demo_ladder_community_self,
+         pre_anxiety = pre_tsst_1,
+         pre_joy = pre_tsst_2,
+         pre_success = pre_tsst_3,
+         pre_meta = pre_tsst_4,
+         post_anxiety = post_tsst_1,
+         post_joy = post_tsst_2,
+         post_success = post_tsst_3,
+         post_meta = post_tsst_4) %>%
+  
+  # add hbq subscales
+  
+  full_join(hbq_scores, join_by(record_id == demo_recordid)) %>%
+  
+  # calculate overall anxiety score
+  
+  mutate(hbq_anxiety = overanxious + separation_anxiety + social_inhibition) %>%
+  
+  # add blink data
+  
+  full_join(blink_data_parent, join_by(record_id == id)) %>%
+  
+  # add column to identify pts as children and column for child id
+  
+  mutate(record_id_chr = paste0(as.character(record_id), "_P"),
+         parent_child = 0,
+         .before = age_y)
+```
+
+```{r blink rates}
+
+# create df for r56 and r01 timestamps
+# pivot to create columns for each type of timestamp
+
+timestamps <- bind_rows(pupil_r01_timestamps, pupil_r56_timestamps) %>%
+  
+  # calculate prep and speech durations in nanoseconds, convert to minutes
+  mutate(pprep_duration_ns = pprep_end - pprep_start,
+         pprep_duration = (pprep_duration_ns * 10^-9)/60,
+         pspeech_duration_ns = pspeech_end - pspeech_start,
+         pspeech_duration = (pspeech_duration_ns * 10^-9)/60,
+         cprep_duration_ns = cprep_end - cprep_start,
+         cprep_duration = (cprep_duration_ns * 10^-9)/60,
+         cspeech_duration_ns = cspeech_end - cspeech_start,
+         cspeech_duration = (cspeech_duration_ns * 10^-9)/60) %>%
+  
+  # select relevant columns
+  select(id, participant, pprep_duration, pspeech_duration, cprep_duration, cspeech_duration)
+```
+
+```{r blink rates}
+
+# filter child timestamps
+timestamps_child <- filter(timestamps, participant == "c")
+
+# add durations to child_data
+
+child_data_blinks <- full_join(child_data, timestamps_child, join_by(record_id == id)) %>%
+  
+  # calculate blink rates
+  
+  mutate(pprep_blinkrate = pprep/pprep_duration,
+         pspeech_blinkrate = pspeech/pspeech_duration,
+         cprep_blinkrate = cprep/cprep_duration,
+         cspeech_blinkrate = cspeech/cspeech_duration)
+
+# repeat for parent_data
+
+timestamps_parent <- filter(timestamps, participant == "p")
+
+parent_data_blinks <- full_join(parent_data, timestamps_parent, join_by(record_id == id)) %>%
+  mutate(pprep_blinkrate = pprep/pprep_duration,
+         pspeech_blinkrate = pspeech/pspeech_duration,
+         cprep_blinkrate = cprep/cprep_duration,
+         cspeech_blinkrate = cspeech/cspeech_duration)
+```
+
+## combine tables
+
+```{r complete data}
+
+# inner join demo_clean and ep_clean
+
+data_complete <- bind_rows(child_data_blinks, parent_data_blinks) %>%
+  
+  # remove pts with no data (how did they even get in here ??)
+  filter(!if_all(4:37, is.na))
+
+# write data_complete to .csv
+
+write.csv(data_complete, file = paste0(new_folder, "/data_complete.csv"), row.names = FALSE)
+```
+
+```{r abstract demographics}
+
+# group into parents and children
+
+data_complete_demo <- group_by(data_complete, parent_child) %>%
+  
+  # calculate summary stats for age in years
+  
+  summarise(mean = mean(age_y), min = min(age_y), max = max(age_y), sd = sd(age_y))
+```
