@@ -264,16 +264,20 @@ timestamps <- bind_rows(pupil_r01_timestamps, pupil_r56_timestamps) %>%
   
   # calculate prep and speech durations in nanoseconds, convert to minutes
   mutate(pprep_duration_ns = pprep_end - pprep_start,
-         pprep_duration = (pprep_duration_ns * 10^-9)/60,
+         pprep_duration_min = (pprep_duration_ns * 10^-9)/60,
+         pprep_duration_s = (pprep_duration_ns * 10^-9),
          pspeech_duration_ns = pspeech_end - pspeech_start,
-         pspeech_duration = (pspeech_duration_ns * 10^-9)/60,
+         pspeech_duration_min = (pspeech_duration_ns * 10^-9)/60,
+         pspeech_duration_s = (pspeech_duration_ns * 10^-9),
          cprep_duration_ns = cprep_end - cprep_start,
-         cprep_duration = (cprep_duration_ns * 10^-9)/60,
+         cprep_duration_min = (cprep_duration_ns * 10^-9)/60,
+         cprep_duration_s = (cprep_duration_ns * 10^-9),
          cspeech_duration_ns = cspeech_end - cspeech_start,
-         cspeech_duration = (cspeech_duration_ns * 10^-9)/60) %>%
+         cspeech_duration_min = (cspeech_duration_ns * 10^-9)/60,
+         cspeech_duration_s = (cspeech_duration_ns * 10^-9)) %>%
   
   # select relevant columns
-  select(id, participant, pprep_duration, pspeech_duration, cprep_duration, cspeech_duration)
+  select(id, participant, pprep_duration_min, pspeech_duration_min, cprep_duration_min, cspeech_duration_min, pprep_duration_s, pspeech_duration_s, cprep_duration_s, cspeech_duration_s)
 ```
 
 ```{r blink rates}
@@ -287,45 +291,42 @@ child_data_blinks <- full_join(child_data, timestamps_child, join_by(record_id =
   
   # calculate blink rates
   
-  mutate(pprep_blinkrate = pprep/pprep_duration,
-         pspeech_blinkrate = pspeech/pspeech_duration,
-         cprep_blinkrate = cprep/cprep_duration,
-         cspeech_blinkrate = cspeech/cspeech_duration)
+  mutate(pprep_blinkrate_min = pprep/pprep_duration_min,
+         pspeech_blinkrate_min = pspeech/pspeech_duration_min,
+         cprep_blinkrate_min = cprep/cprep_duration_min,
+         cspeech_blinkrate_min = cspeech/cspeech_duration_min,
+         pprep_blinkrate_s = pprep/pprep_duration_s,
+         pspeech_blinkrate_s = pspeech/pspeech_duration_s,
+         cprep_blinkrate_s = cprep/cprep_duration_s,
+         cspeech_blinkrate_s = cspeech/cspeech_duration_s)
 
 # repeat for parent_data
 
 timestamps_parent <- filter(timestamps, participant == "p")
 
 parent_data_blinks <- full_join(parent_data, timestamps_parent, join_by(record_id == id)) %>%
-  mutate(pprep_blinkrate = pprep/pprep_duration,
-         pspeech_blinkrate = pspeech/pspeech_duration,
-         cprep_blinkrate = cprep/cprep_duration,
-         cspeech_blinkrate = cspeech/cspeech_duration)
+  mutate(pprep_blinkrate_min = pprep/pprep_duration_min,
+         pspeech_blinkrate_min = pspeech/pspeech_duration_min,
+         cprep_blinkrate_min = cprep/cprep_duration_min,
+         cspeech_blinkrate_min = cspeech/cspeech_duration_min,
+         pprep_blinkrate_s = pprep/pprep_duration_s,
+         pspeech_blinkrate_s = pspeech/pspeech_duration_s,
+         cprep_blinkrate_s = cprep/cprep_duration_s,
+         cspeech_blinkrate_s = cspeech/cspeech_duration_s)
 ```
 
 ## combine tables
 
 ```{r complete data}
 
-# inner join demo_clean and ep_clean
+# combine p and c data
 
 data_complete <- bind_rows(child_data_blinks, parent_data_blinks) %>%
   
   # remove pts with no data (how did they even get in here ??)
-  filter(!if_all(4:37, is.na))
+  filter(!if_all(4:45, is.na))
 
 # write data_complete to .csv
 
 write.csv(data_complete, file = paste0(new_folder, "/data_complete.csv"), row.names = FALSE)
-```
-
-```{r abstract demographics}
-
-# group into parents and children
-
-data_complete_demo <- group_by(data_complete, parent_child) %>%
-  
-  # calculate summary stats for age in years
-  
-  summarise(mean = mean(age_y), min = min(age_y), max = max(age_y), sd = sd(age_y))
 ```

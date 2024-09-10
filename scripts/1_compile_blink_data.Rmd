@@ -223,10 +223,10 @@ all_blinks <- bind_rows(pupil_r56_ts, pupil_r01_ts) %>%
   summarise(blink_count = n()) %>%
   
   # pivot wider, one row per pt per task section
-  pivot_wider(names_from = blink_type, values_from = blink_count)
+  pivot_wider(names_from = blink_type, values_from = blink_count) %>%
   
   # write to csv
-  # write_csv("../data/raw/complete_blink_data.csv")
+  write_csv("../data/raw/complete_blink_data.csv")
 
 # identify potential errors in timestamping
 all_blinks_na <- filter(all_blinks, is.na(cprep) | is.na(cspeech) | is.na(pprep) | is.na(pspeech))
