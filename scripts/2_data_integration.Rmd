@@ -323,8 +323,13 @@ parent_data_blinks <- full_join(parent_data, timestamps_parent, join_by(record_i
 
 data_complete <- bind_rows(child_data_blinks, parent_data_blinks) %>%
   
-  # remove pts with no data (how did they even get in here ??)
-  filter(!if_all(4:45, is.na))
+  # remove pts with incomplete data
+  filter(!if_any(4:45, is.na)) %>%
+  
+  # remove incomplete dyads
+  group_by(record_id) %>%
+  mutate(dyad_count = n()) %>%
+  filter(dyad_count == 2)
 
 # write data_complete to .csv
 

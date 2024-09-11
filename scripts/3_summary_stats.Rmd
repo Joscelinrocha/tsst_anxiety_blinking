@@ -39,87 +39,53 @@ data_complete <- read_csv(paste0(data_path, "/data_complete.csv"))
 
 ```{r group data}
 
-# calculate mean/SD for numeric data
-summary_data_means <- pivot_longer(data_complete, cols = c(4:5, 11:28, 30:45), names_to = "variable_name") %>%
+# calculate average age
+summary_data_ages <- select(data_complete, 3:5) %>%
   
-  # select relevant columns
-  select(3, 10:11) %>%
-  
-  # remove any -99/-999 stragglers
-  mutate(value = na_if(value, -999)) %>%
-  mutate(value = na_if(value, -99)) %>%
+  # pivot age columns longer for summarize function
+  pivot_longer(cols = c(2:3), names_to = "age") %>%
   
   # group by parent/child and variable_name
-  group_by(parent_child, variable_name) %>%
+  group_by(parent_child, age) %>%
   
   # calculate mean/SD for each variable
   summarize(mean = mean(value, na.rm = TRUE), stdev = sd(value, na.rm = TRUE), count = sum(!is.na(value)), missing_values = sum(is.na(value)))
 
-# calculate counts for sex, race, ethnicity, income, and education
-summary_data_counts <- pivot_longer(data_complete, cols = c(6:10), names_to = "variable_name") %>%
-  
-  # select relevant columns
-  select(3, 41:42) %>%
-  
-  # group by parent/child, variable_name, and value
-  group_by(parent_child, variable_name, value) %>%
-  
-  # count by each demographic category
+# count parent and child sex
+summary_data_sex <- select(data_complete, 3, 6) %>%
+  group_by(parent_child, sex) %>%
   summarize(count = n())
 
-# count dyads
-summary_data_dyads <- mutate(data_complete,
-                             
-                             # add columns to track completion of study tasks
-                             demo_complete = case_when(
-                               !if_all(4:12, is.na) ~ 1,
-                               .default = 0
-                             ),
-                             hbq_complete = case_when(
-                               !if_all(21:24, is.na) ~ 1,
-                               .default = 0
-                             ),
-                             ep_complete = case_when(
-                               !if_all(13:20, is.na) ~ 1,
-                               .default = 0
-                             ),
-                             tsst_complete = case_when(
-                               !if_all(c(25:28, 30:45), is.na) ~ 1,
-                               .default = 0
-                             ),
-                             demo_complete_strict = case_when(
-                               !if_any(4:12, is.na) ~ 1,
-                               .default = 0
-                             ),
-                             hbq_complete_strict = case_when(
-                               !if_any(21:24, is.na) ~ 1,
-                               .default = 0
-                             ),
-                             ep_complete_strict = case_when(
-                               !if_any(13:20, is.na) ~ 1,
-                               .default = 0
-                             ),
-                             tsst_complete_strict = case_when(
-                               !if_any(c(25:28, 30:45), is.na) ~ 1,
-                               .default = 0
-                             )) %>%
-  
-  # select relevant columns
-  select(1, 3, 46:53) %>%
-  
-  # pivot completion data columns longer
-  pivot_longer(cols = c(3:10), names_to = "completion_data") %>%
-  
-  # group by task completion and id
-  group_by(completion_data, record_id) %>%
-  
-  # idk how to describe what i'm doing here, number of pts per dyad per completed task? if both parent and child completed it's 2, if only 1 did it's 1, if neither did it's 0
-  summarize(dyad_completion = sum(value)) %>%
-  
-  # ungroup and then regroup by task completion and completion count (e.g., how many completed per dyad)
-  ungroup() %>%
-  group_by(completion_data, dyad_completion) %>%
-  
-  # count complete dyads, partial dyads, and no data for each task
+# count dyad sexes
+summary_data_dyad_sex <- select(data_complete, 1, 3, 6) %>%
+  mutate(parent_child = case_when(
+    parent_child == 1 ~ "child",
+    parent_child == 0 ~ "parent"
+  )) %>%
+  pivot_wider(names_from = parent_child, values_from = sex) %>%
+  mutate(combo = paste0(parent, "-", child)) %>%
+  group_by(combo) %>%
+  summarize(count = n())
+
+# race frequencies
+summary_data_race <- select(data_complete, 3, 7) %>%
+  group_by(parent_child, race) %>%
+  summarize(count = n())
+
+# ethnicity frequencies
+summary_data_ethnicity <- select(data_complete, 3, 8) %>%
+  group_by(parent_child, ethnicity) %>%
+  summarize(count = n())
+
+# parent education
+summary_data_education <- select(data_complete, 3, 9) %>%
+  filter(parent_child == 0) %>%
+  group_by(parent_edu) %>%
+  summarize(count = n())
+
+# parent income
+summary_data_income <- select(data_complete, 3, 10) %>%
+  filter(parent_child == 0) %>%
+  group_by(parent_income) %>%
   summarize(count = n())
 ```
