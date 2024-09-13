@@ -27,32 +27,38 @@ Megan Schumer, Talia Halleck, Joscelin Rocha-Hidalgo, Shri Jeyaram, Maya Dieterl
 |--------| demo_codebook.csv\
 |--------| hbq_overall_codebook.xslx\
 |--| data\
-|--------| readme.md\
+|--------| all_blinks.csv\
 |--------| dataset_goal.xlsx\
 |--------| blink_comparison\
 |-------------------| manual_data\
 |-------------------| pupil_data\
+|-------------------| pupil_data_manual_export\
 |-------------------| blink_comparison.Rmd
 |-------------------| blink_comparison.csv
+|-------------------| blink_culprits.csv
 |--------| raw\
 |-------------------| readme.md\
-|-------------------| merged_blinks_data_2024-05-02.csv\
-|-------------------| merged_blinks_data.csv\
-|-------------------| pivoted_merged_events_data.csv\
+|-------------------| complete_blink_data.csv\
 |-------------------| redcap_data.csv\
 |-------------------| archive\
-|-------------------| blinks from manual export\
-|-------------------| blinks from pupil cloud\
+|-------------------| R01\
+|-------------------| R56\
 |-------------------| videos\
 |--------| tidy\
 |-------------------| 2024-03-29\
 |-------------------| 2024-04-02\
 |-------------------| 2024-05-14\
 |-------------------| 2024-05-31\
+|-------------------| 2024-09-05\
+|-------------------| 2024-09-10\
 |--| scripts\
 |--------| Correlations.Rmd\
 |--------| manual_export.ipynb\
-|--------| step_0_merging_pupil_files.Rmd\
+|--------| 0_merge_pupil_files.Rmd\
+|--------| 1_compile_blink_data.Rmd\
+|--------| 2_data_integration.Rmd\
+|--------| 3_summary_stats.Rmd\
+|--------| 4_correlations\
 
 # Applicable instructions
 Any instructions/tools necessary to use files or replicate results
