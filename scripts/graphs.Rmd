@@ -21,15 +21,10 @@ data <- read.csv("C:/Users/talia/Box/tsst_anxiety_blinking/data/tidy/2024-09-10/
 
 view(data)
 
-##child data set##
-blink_rates_c_s <- data %>%
-  select(pprep_blinkrate_s, pspeech_blinkrate_s, cprep_blinkrate_s, cspeech_blinkrate_s, participant) %>%
-  filter(participant == 'c')
+blink_rates_s <- data %>%
+  select(pprep_blinkrate_s, pspeech_blinkrate_s, cprep_blinkrate_s, cspeech_blinkrate_s, participant)
 
-blink_rates_c_s <- blink_rates_c_s %>%
-  select(-participant)
-
-blink_rates_c_s <- blink_rates_c_s %>%
+blink_rates_s <- blink_rates_s %>%
   rename(
     parent_prep = pprep_blinkrate_s,
     parent_speech = pspeech_blinkrate_s,
@@ -37,108 +32,122 @@ blink_rates_c_s <- blink_rates_c_s %>%
     child_speech = cspeech_blinkrate_s
   )
 
-blink_data_long_c_s <- blink_rates_c_s %>%
-  pivot_longer(cols = everything(), names_to = "Condition", values_to = "BlinkRate")
+blink_rates_s_long <- blink_rates_s %>%
+  pivot_longer(cols = parent_prep:child_speech, names_to = "Condition", values_to = "Blinkrate")
 
-##parent data set##
-blink_rates_p_s <- data %>%
-  select(pprep_blinkrate_s, pspeech_blinkrate_s, cprep_blinkrate_s, cspeech_blinkrate_s, participant) %>%
-  filter(participant == 'p')
+head(blink_rates_s_long)
 
-blink_rates_p_s <- blink_rates_p_s %>%
-  select(-participant)
+blink_rates_s_long <- blink_rates_s_long %>%
+  mutate(participant = recode(participant, 
+                              "c" = "child",
+                              "p" = "parent"))
 
-blink_rates_p_s <- blink_rates_p_s %>%
-  rename(
-    parent_prep = pprep_blinkrate_s,
-    parent_speech = pspeech_blinkrate_s,
-    child_prep = cprep_blinkrate_s,
-    child_speech = cspeech_blinkrate_s
-  )
+participant_colors <- c("child" = "#EF5B5B", "parent" = "#20A39E")
 
-blink_data_long_p_s <- blink_rates_p_s %>%
-  pivot_longer(cols = everything(), names_to = "Condition", values_to = "BlinkRate")
+age_colors <- c()
+
 ```
 
 ```{r}
 ##scatterplot##
-blink_data_long_c_s |>
-  ggplot(mapping = aes(x = Condition, y = BlinkRate, color = Condition)) +
-  geom_jitter(width = 0.2, height = 0) +
-  labs(title = "Child Blinks Per Second Across Conditions",
-    y = "Blinks per Second")
+str(blink_rates_s_long)
 
-blink_data_long_p_s |>
-  ggplot(mapping = aes(x = Condition, y = BlinkRate, color = Condition)) +
+blink_rates_s_long |>
+  ggplot(mapping = aes(x = Condition, y = Blinkrate, color = participant)) +
   geom_jitter(width = 0.2, height = 0) +
-  labs(title = "Parent Blinks Per Second Across Conditions",
-    y = "Blinks per Second")
+  scale_color_manual(values = participant_colors) +
+  labs(title = "Blink Rates Across Conditions",
+        x = "Task Condition",
+        y = "Blinks per Second") 
+
 ```
 ```{r}
-##Boxplots##
+##Bargraph##
 
-#calculate child summary stats
-blink_rates_c_s_summary <- blink_rates_c_s %>%
+#calculate  summary stats
+blink_rates_summary <- blink_rates_s_long %>%
+  group_by(Condition, participant) %>%
   summarise(
-    parent_prep_mean = mean(parent_prep, na.rm = TRUE),
-    parent_prep_se = sd(parent_prep, na.rm = TRUE) / sqrt(sum(!is.na((parent_prep)))),
-    
-    parent_speech_mean = mean(parent_speech, na.rm = TRUE),
-    parent_speech_se = sd(parent_speech, na.rm = TRUE) / sqrt(sum(!is.na(parent_speech))),
-    
-    child_prep_mean = mean(child_prep, na.rm = TRUE),
-    child_prep_se = sd(child_prep, na.rm = TRUE) / sqrt(sum(!is.na(child_prep))),
-    
-    child_speech_mean = mean(child_speech, na.rm = TRUE),
-    child_speech_se = sd(child_speech, na.rm = TRUE) / sqrt(sum(!is.na(child_speech)))
+    mean = mean(Blinkrate, na.rm = TRUE),
+    se = sd(Blinkrate, na.rm = TRUE) / sqrt(n()),
+    .groups = 'drop'  # Drop the grouping after summarizing
   )
 
-blink_rates_c_s_summary <- blink_rates_c_s_summary %>%
-  pivot_longer(
-    cols = everything(), 
-    names_to = c("Condition", ".value"), 
-    names_pattern = "^(.*)_(mean|se)$"  # Correct pattern to capture both parts
-  )
-
-#plot child data
-blink_rates_c_s_summary |>
-  ggplot(aes(x = Condition, y = mean, fill = Condition)) +
+#plot data
+bargraph <- blink_rates_summary |>
+  ggplot(aes(x = Condition, y = mean, fill = participant)) +
   geom_bar(stat = 'identity', position = position_dodge(), width = 0.7) +
   geom_errorbar(aes(ymin = mean - se, ymax = mean +se), width = 0.2, position = position_dodge(0.7)) +
-  labs(title = "Child Blinks Per Second Across Conditions",
-       x = 'Condition',
+  scale_color_manual(values = participant_colors) +
+  labs(title = "Blink Rates Across Conditions",
+       x = 'Task Condition',
        y = 'Blinks per Second')
 
-#calculate parent summary stats
-blink_rates_p_s_summary <- blink_rates_p_s %>%
-  summarise(
-    parent_prep_mean = mean(parent_prep, na.rm = TRUE),
-    parent_prep_se = sd(parent_prep, na.rm = TRUE) / sqrt(sum(!is.na((parent_prep)))),
-    
-    parent_speech_mean = mean(parent_speech, na.rm = TRUE),
-    parent_speech_se = sd(parent_speech, na.rm = TRUE) / sqrt(sum(!is.na(parent_speech))),
-    
-    child_prep_mean = mean(child_prep, na.rm = TRUE),
-    child_prep_se = sd(child_prep, na.rm = TRUE) / sqrt(sum(!is.na(child_prep))),
-    
-    child_speech_mean = mean(child_speech, na.rm = TRUE),
-    child_speech_se = sd(child_speech, na.rm = TRUE) / sqrt(sum(!is.na(child_speech)))
-  )
+ggsave("blink_rates_plot.jpg", plot = bargraph, width = 8, height = 6, units = "in", dpi = 300)
+```
 
-blink_rates_p_s_summary <- blink_rates_p_s_summary %>%
-  pivot_longer(
-    cols = everything(), 
-    names_to = c("Condition", ".value"), 
-    names_pattern = "^(.*)_(mean|se)$"  # Correct pattern to capture both parts
-  )
 
-#plot child data
-blink_rates_p_s_summary |>
-  ggplot(aes(x = Condition, y = mean, fill = Condition)) +
-  geom_bar(stat = 'identity', position = position_dodge(), width = 0.7) +
-  geom_errorbar(aes(ymin = mean - se, ymax = mean +se), width = 0.2, position = position_dodge(0.7)) +
-  labs(title = "Parent Blinks Per Second Across Conditions",
-       x = 'Condition',
-       y = 'Blinks per Second')
+```{r}
+#Blinks vs HBQ (child)
+
+#prepare data set#
+child_data <- data %>%
+  select(pre_meta, post_meta, hbq_anxiety, pprep_blinkrate_s, pspeech_blinkrate_s, cprep_blinkrate_s, cspeech_blinkrate_s, participant, age_y)
+
+child_data <- child_data %>%
+  rename(parent_prep = pprep_blinkrate_s,
+    parent_speech = pspeech_blinkrate_s,
+    child_prep = cprep_blinkrate_s,
+    child_speech = cspeech_blinkrate_s,
+    pre_ep = pre_meta,
+    post_ep = post_meta)
+
+child_data <- child_data %>%
+  filter(participant == 'c')
+
+child_data <- child_data %>%
+  select(-participant)
+  
+view(child_data)
+
+child_data_long <- child_data %>%
+  pivot_longer(cols = pre_ep:post_ep, names_to = 'Questionnaire', values_to = 'Score')
+
+#plot HBQ and pre/post EP based on age of child
+
+#bargraph with pre_ep and anxiety; child age color
+child_data |>
+  ggplot(mapping = aes(x = pre_ep, y = hbq_anxiety, fill = age_y)) +
+  geom_bar(stat = 'identity', position = position_dodge(), width = 0.7)
+
+
+
+#jitterplot with pre_ep and anxiety; child age color
+pre_ep <- child_data |>
+  ggplot(mapping = aes(x = pre_ep, y = hbq_anxiety, color = age_y)) +
+  geom_jitter(width = 0.25)
+
+ggsave("pre_ep_hbq.jpg", plot = pre_ep, width = 8, height = 6, units = "in", dpi = 300)
+
+#jitterplot with post-ep and anxiety; child age color
+post_ep <- child_data |>
+  ggplot(mapping = aes(x = post_ep, y = hbq_anxiety, color = age_y)) +
+  geom_jitter(width = 0.25)
+
+ggsave("post_ep_hbq.jpg", plot = post_ep, width = 8, height = 6, units = "in", dpi = 300)
+
+
+
+
+#jitterplot with pre_ep and post_ep; child age color
+child_data |>
+  ggplot(mapping = aes(x = pre_ep, y = post_ep, color = age_y)) +
+  geom_jitter()
+
+#jitterplot with pre vs post (pivot_longer); child age color
+child_data_long |>
+  ggplot(mapping = aes(x = Questionnaire, y = Score, color = age_y)) +
+  geom_jitter()
+
 ```
 
