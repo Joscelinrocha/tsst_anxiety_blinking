@@ -39,10 +39,10 @@ head(blink_rates_s_long)
 
 blink_rates_s_long <- blink_rates_s_long %>%
   mutate(participant = recode(participant, 
-                              "c" = "child",
-                              "p" = "parent"))
+                              "c" = "Child",
+                              "p" = "Parent"))
 
-participant_colors <- c("child" = "#EF5B5B", "parent" = "#20A39E")
+participant_colors <- c("Child" = "#EF5B5B", "Parent" = "#20A39E")
 
 age_colors <- c()
 
@@ -74,14 +74,43 @@ blink_rates_summary <- blink_rates_s_long %>%
   )
 
 #plot data
-bargraph <- blink_rates_summary |>
-  ggplot(aes(x = Condition, y = mean, fill = participant)) +
+blink_rates_summary |>
+  ggplot(aes(x = factor(Condition, levels = c("parent_prep", "parent_speech", "child_prep", "child_speech")), y = mean, fill = participant)) +
   geom_bar(stat = 'identity', position = position_dodge(), width = 0.7) +
   geom_errorbar(aes(ymin = mean - se, ymax = mean +se), width = 0.2, position = position_dodge(0.7)) +
+  scale_y_continuous(limits = c(0, 0.7), expand = c(0, 0)) +
   scale_color_manual(values = participant_colors) +
-  labs(title = "Blink Rates Across Conditions",
-       x = 'Task Condition',
-       y = 'Blinks per Second')
+  labs(x = "Task Condition",
+       y = "Blinks per Second",
+       fill = "Participant") +
+  scale_x_discrete(labels = c("parent_prep" = "Parent Prep",
+                              "parent_speech" = "Parent Speech",
+                              "child_prep" = "Child Prep",
+                              "child_speech" = "Child Speech")) +
+  theme(
+    panel.background = element_blank(),
+    panel.grid = element_blank(),
+    axis.line = element_line(color = "black")
+  )
+
+bargraph <- blink_rates_summary |>
+  ggplot(aes(x = factor(Condition, levels = c("parent_prep", "parent_speech", "child_prep", "child_speech")), y = mean, fill = participant)) +
+  geom_bar(stat = 'identity', position = position_dodge(), width = 0.7) +
+  geom_errorbar(aes(ymin = mean - se, ymax = mean +se), width = 0.2, position = position_dodge(0.7)) +
+  scale_y_continuous(limits = c(0, 0.7), expand = c(0, 0)) +
+  scale_color_manual(values = participant_colors) +
+  labs(x = "Task Condition",
+       y = "Blinks per Second",
+       fill = "Participant") +
+  scale_x_discrete(labels = c("parent_prep" = "Parent Prep",
+                              "parent_speech" = "Parent Speech",
+                              "child_prep" = "Child Prep",
+                              "child_speech" = "Child Speech")) +
+  theme(
+    panel.background = element_blank(),
+    panel.grid = element_blank(),
+    axis.line = element_line(color = "black")
+  )
 
 ggsave("blink_rates_plot.jpg", plot = bargraph, width = 8, height = 6, units = "in", dpi = 300)
 ```
@@ -100,7 +129,8 @@ child_data <- child_data %>%
     child_prep = cprep_blinkrate_s,
     child_speech = cspeech_blinkrate_s,
     pre_ep = pre_meta,
-    post_ep = post_meta)
+    post_ep = post_meta,
+    Age = age_y)
 
 child_data <- child_data %>%
   filter(participant == 'c')
@@ -118,21 +148,69 @@ child_data_long <- child_data %>%
 #bargraph with pre_ep and anxiety; child age color
 child_data |>
   ggplot(mapping = aes(x = pre_ep, y = hbq_anxiety, fill = age_y)) +
-  geom_bar(stat = 'identity', position = position_dodge(), width = 0.7)
+  geom_bar(stat = 'identity', position = position_dodge(), width = 0.7) 
 
 
 
 #jitterplot with pre_ep and anxiety; child age color
+child_data |>
+  ggplot(mapping = aes(x = pre_ep, y = hbq_anxiety, color = Age)) +
+  geom_jitter(size = 2) +
+  scale_y_continuous(limits = c(0, 6), expand = c(0.02, 0)) +
+  scale_color_gradientn(colors = c("#20A39E", "#EF5B5B", "#FFBA49")) +
+  labs(y = "HBQ Anxiety",
+       x = "Pre-EP Questionnaire",
+       fill = "Child Age") +
+  theme(
+    panel.background = element_blank(),
+    panel.grid = element_blank(),
+    axis.line = element_line(color = "black")
+  )
+
 pre_ep <- child_data |>
-  ggplot(mapping = aes(x = pre_ep, y = hbq_anxiety, color = age_y)) +
-  geom_jitter(width = 0.25)
+  ggplot(mapping = aes(x = pre_ep, y = hbq_anxiety, color = Age)) +
+  geom_jitter(width = 0.25, size = 2) +
+  scale_y_continuous(expand = c(0.02, 0)) +
+  scale_color_gradientn(colors = c("#20A39E", "#EF5B5B", "#FFBA49")) +
+  labs(y = "HBQ Anxiety",
+       x = "Pre-EP Questionnaire",
+       fill = "Child Age") +
+  theme(
+    panel.background = element_blank(),
+    panel.grid = element_blank(),
+    axis.line = element_line(color = "black")
+  )
 
 ggsave("pre_ep_hbq.jpg", plot = pre_ep, width = 8, height = 6, units = "in", dpi = 300)
 
 #jitterplot with post-ep and anxiety; child age color
+child_data |>
+  ggplot(mapping = aes(x = post_ep, y = hbq_anxiety, color = Age)) +
+  geom_jitter(width = 0.25, size = 2) +
+  scale_y_continuous(expand = c(0.02, 0)) +
+  scale_color_gradientn(colors = c("#20A39E", "#EF5B5B", "#FFBA49")) +
+  labs(y = "HBQ Anxiety",
+       x = "Post-EP Questionnaire",
+       fill = "Child Age") +
+  theme(
+    panel.background = element_blank(),
+    panel.grid = element_blank(),
+    axis.line = element_line(color = "black")
+  )
+
 post_ep <- child_data |>
-  ggplot(mapping = aes(x = post_ep, y = hbq_anxiety, color = age_y)) +
-  geom_jitter(width = 0.25)
+  ggplot(mapping = aes(x = post_ep, y = hbq_anxiety, color = Age)) +
+  geom_jitter(width = 0.25, size = 2) +
+  scale_y_continuous(expand = c(0.02, 0)) +
+  scale_color_gradientn(colors = c("#20A39E", "#EF5B5B", "#FFBA49")) +
+  labs(y = "HBQ Anxiety",
+       x = "Post-EP Questionnaire",
+       fill = "Child Age") +
+  theme(
+    panel.background = element_blank(),
+    panel.grid = element_blank(),
+    axis.line = element_line(color = "black")
+  )
 
 ggsave("post_ep_hbq.jpg", plot = post_ep, width = 8, height = 6, units = "in", dpi = 300)
 
