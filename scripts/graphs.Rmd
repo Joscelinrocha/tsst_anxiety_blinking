@@ -11,8 +11,11 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 #load packages
+
+install.packages('scales')
 library(tidyverse)
 library(ggplot2)
+library(scales)
 ```
 
 ```{r}
@@ -42,9 +45,8 @@ blink_rates_s_long <- blink_rates_s_long %>%
                               "c" = "Child",
                               "p" = "Parent"))
 
+#assign colors for participants for bar graph
 participant_colors <- c("Child" = "#EF5B5B", "Parent" = "#20A39E")
-
-age_colors <- c()
 
 ```
 
@@ -70,33 +72,41 @@ blink_rates_summary <- blink_rates_s_long %>%
   summarise(
     mean = mean(Blinkrate, na.rm = TRUE),
     se = sd(Blinkrate, na.rm = TRUE) / sqrt(n()),
-    .groups = 'drop'  # Drop the grouping after summarizing
+    .groups = 'drop'
   )
 
 #plot data
+
+##base code for the bargraph
 blink_rates_summary |>
   ggplot(aes(x = factor(Condition, levels = c("parent_prep", "parent_speech", "child_prep", "child_speech")), y = mean, fill = participant)) +
   geom_bar(stat = 'identity', position = position_dodge(), width = 0.7) +
-  geom_errorbar(aes(ymin = mean - se, ymax = mean +se), width = 0.2, position = position_dodge(0.7)) +
+  geom_errorbar(aes(ymin = mean - se, ymax = mean +se), width = 0.2, position = position_dodge(0.7), size = 0.75) +
   scale_y_continuous(limits = c(0, 0.7), expand = c(0, 0)) +
   scale_color_manual(values = participant_colors) +
   labs(x = "Task Condition",
        y = "Blinks per Second",
        fill = "Participant") +
-  scale_x_discrete(labels = c("parent_prep" = "Parent Prep",
-                              "parent_speech" = "Parent Speech",
-                              "child_prep" = "Child Prep",
-                              "child_speech" = "Child Speech")) +
+  scale_x_discrete(labels = function(x) str_wrap(c("parent_prep" = "Parent Prep",
+                                                    "parent_speech" = "Parent Speech",
+                                                    "child_prep" = "Child Prep",
+                                                    "child_speech" = "Child Speech"), width = 10)) +
   theme(
     panel.background = element_blank(),
     panel.grid = element_blank(),
-    axis.line = element_line(color = "black")
+    axis.line = element_line(color = "black", size = 0.75),
+    axis.text = element_text(color = 'black', size = 28),
+    axis.title = element_text(size = 32),
+    legend.title = element_text(size = 28),
+    legend.text = element_text(size = 26)
   )
 
+
+##making data bargraph item so i can save picture
 bargraph <- blink_rates_summary |>
   ggplot(aes(x = factor(Condition, levels = c("parent_prep", "parent_speech", "child_prep", "child_speech")), y = mean, fill = participant)) +
   geom_bar(stat = 'identity', position = position_dodge(), width = 0.7) +
-  geom_errorbar(aes(ymin = mean - se, ymax = mean +se), width = 0.2, position = position_dodge(0.7)) +
+  geom_errorbar(aes(ymin = mean - se, ymax = mean +se), width = 0.2, position = position_dodge(0.7), size = 0.75) +
   scale_y_continuous(limits = c(0, 0.7), expand = c(0, 0)) +
   scale_color_manual(values = participant_colors) +
   labs(x = "Task Condition",
@@ -109,17 +119,22 @@ bargraph <- blink_rates_summary |>
   theme(
     panel.background = element_blank(),
     panel.grid = element_blank(),
-    axis.line = element_line(color = "black")
+    axis.line = element_line(color = "black", size = 0.75),
+    axis.text = element_text(color = 'black', size = 44), 
+    axis.title = element_text(size = 52),
+    legend.title = element_text(size = 44),
+    legend.text = element_text(size = 40)
   )
 
-ggsave("blink_rates_plot.jpg", plot = bargraph, width = 8, height = 6, units = "in", dpi = 300)
+##save the picture
+ggsave("blink_rates_plot.jpg", plot = bargraph, width = 24, height = 16, units = "in", dpi = 150)
 ```
 
 
 ```{r}
-#Blinks vs HBQ (child)
+#Blinks vs HBQ (child)#
 
-#prepare data set#
+#prepare data set
 child_data <- data %>%
   select(pre_meta, post_meta, hbq_anxiety, pprep_blinkrate_s, pspeech_blinkrate_s, cprep_blinkrate_s, cspeech_blinkrate_s, participant, age_y)
 
@@ -137,95 +152,103 @@ child_data <- child_data %>%
 
 child_data <- child_data %>%
   select(-participant)
-  
-view(child_data)
 
 child_data_long <- child_data %>%
   pivot_longer(cols = pre_ep:post_ep, names_to = 'Questionnaire', values_to = 'Score')
 
-#plot HBQ and pre/post EP based on age of child
 
-#bargraph with pre_ep and anxiety; child age color
-child_data |>
-  ggplot(mapping = aes(x = pre_ep, y = hbq_anxiety, fill = age_y)) +
-  geom_bar(stat = 'identity', position = position_dodge(), width = 0.7) 
-
-
+#plot HBQ and pre/post EP based on age of child#
 
 #jitterplot with pre_ep and anxiety; child age color
+
+##base jitterplot
 child_data |>
   ggplot(mapping = aes(x = pre_ep, y = hbq_anxiety, color = Age)) +
-  geom_jitter(size = 2) +
+  geom_jitter(size = 2.5) +
   scale_y_continuous(limits = c(0, 6), expand = c(0.02, 0)) +
   scale_color_gradientn(colors = c("#20A39E", "#EF5B5B", "#FFBA49")) +
   labs(y = "HBQ Anxiety",
-       x = "Pre-EP Questionnaire",
+       x = "Pre-Task Questionnaire",
        fill = "Child Age") +
   theme(
     panel.background = element_blank(),
     panel.grid = element_blank(),
-    axis.line = element_line(color = "black")
+    axis.line = element_line(color = "black", size = 0.75),
+    axis.text = element_text(color = 'black', size = 44), 
+    axis.title = element_text(size = 52),
+    legend.title = element_text(size = 44),
+    legend.text = element_text(size = 40),
+    legend.position = "none"
   )
 
+##assigning plot to pre_ep to save
 pre_ep <- child_data |>
   ggplot(mapping = aes(x = pre_ep, y = hbq_anxiety, color = Age)) +
-  geom_jitter(width = 0.25, size = 2) +
-  scale_y_continuous(expand = c(0.02, 0)) +
+  geom_jitter(size = 15) +
+  scale_y_continuous(limits = c(0, 6), expand = c(0.02, 0)) +
   scale_color_gradientn(colors = c("#20A39E", "#EF5B5B", "#FFBA49")) +
   labs(y = "HBQ Anxiety",
-       x = "Pre-EP Questionnaire",
+       x = "Pre-Task Questionnaire",
        fill = "Child Age") +
   theme(
     panel.background = element_blank(),
     panel.grid = element_blank(),
-    axis.line = element_line(color = "black")
+    axis.line = element_line(color = "black", size = 0.75),
+    axis.text = element_text(color = 'black', size = 44), 
+    axis.title = element_text(size = 52),
+    legend.position = "none"
   )
 
-ggsave("pre_ep_hbq.jpg", plot = pre_ep, width = 8, height = 6, units = "in", dpi = 300)
+##save plot
+ggsave("pre_ep_hbq.jpg", plot = pre_ep, width = 24, height = 16, units = "in", dpi = 150)
+
 
 #jitterplot with post-ep and anxiety; child age color
+
+##base code
 child_data |>
   ggplot(mapping = aes(x = post_ep, y = hbq_anxiety, color = Age)) +
-  geom_jitter(width = 0.25, size = 2) +
-  scale_y_continuous(expand = c(0.02, 0)) +
+  geom_jitter(width = 0.25, size = 15) +
+  scale_y_continuous(limits = c(0, 6), expand = c(0.02, 0)) +
   scale_color_gradientn(colors = c("#20A39E", "#EF5B5B", "#FFBA49")) +
   labs(y = "HBQ Anxiety",
-       x = "Post-EP Questionnaire",
+       x = "Post-Task Questionnaire",
        fill = "Child Age") +
   theme(
     panel.background = element_blank(),
     panel.grid = element_blank(),
-    axis.line = element_line(color = "black")
+    axis.line = element_line(color = "black", size = 0.75),
+    axis.text = element_text(color = 'black', size = 44), 
+    axis.title = element_text(size = 52),
+    legend.title = element_text(size = 44),
+    legend.text = element_text(size = 40)
   )
 
+##assign plot to post_ep
 post_ep <- child_data |>
   ggplot(mapping = aes(x = post_ep, y = hbq_anxiety, color = Age)) +
-  geom_jitter(width = 0.25, size = 2) +
-  scale_y_continuous(expand = c(0.02, 0)) +
+  geom_jitter(width = 0.25, size = 15) +
+  scale_y_continuous(limits = c(0, 6), expand = c(0.02, 0)) +
   scale_color_gradientn(colors = c("#20A39E", "#EF5B5B", "#FFBA49")) +
   labs(y = "HBQ Anxiety",
-       x = "Post-EP Questionnaire",
+       x = "Post-Task Questionnaire",
        fill = "Child Age") +
   theme(
     panel.background = element_blank(),
     panel.grid = element_blank(),
-    axis.line = element_line(color = "black")
-  )
+    axis.line = element_line(color = "black", size = 0.75),
+    axis.text = element_text(color = 'black', size = 44), 
+    axis.title = element_text(size = 52),
+    legend.title = element_text(size = 44),
+    legend.text = element_text(size = 40)
+  )  +
+  guides(color = guide_colorbar(
+    barwidth = 2,   # Increase the width of the color bar
+    barheight = 20  # Increase the height of the color bar
+  ))
 
-ggsave("post_ep_hbq.jpg", plot = post_ep, width = 8, height = 6, units = "in", dpi = 300)
-
-
-
-
-#jitterplot with pre_ep and post_ep; child age color
-child_data |>
-  ggplot(mapping = aes(x = pre_ep, y = post_ep, color = age_y)) +
-  geom_jitter()
-
-#jitterplot with pre vs post (pivot_longer); child age color
-child_data_long |>
-  ggplot(mapping = aes(x = Questionnaire, y = Score, color = age_y)) +
-  geom_jitter()
+##save graph
+ggsave("post_ep_hbq.jpg", plot = post_ep, width = 24, height = 16, units = "in", dpi = 150)
 
 ```
 
